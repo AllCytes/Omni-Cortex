@@ -151,7 +151,6 @@ test_*.py
 !tests/test_*.py
 
 # Development files
-HANDOFF.md
 PROMPT.md
 memories.json
 .claude/
