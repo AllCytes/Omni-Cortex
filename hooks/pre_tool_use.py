@@ -87,8 +87,22 @@ def truncate(text: str, max_length: int = 10000) -> str:
 def main():
     """Process PreToolUse hook."""
     try:
-        # Read input from stdin
-        input_data = json.load(sys.stdin)
+        # Read input from stdin with timeout protection
+        import select
+        if sys.platform != "win32":
+            # Unix: use select for timeout
+            ready, _, _ = select.select([sys.stdin], [], [], 5.0)
+            if not ready:
+                print(json.dumps({}))
+                return
+
+        # Read all input at once
+        raw_input = sys.stdin.read()
+        if not raw_input or not raw_input.strip():
+            print(json.dumps({}))
+            return
+
+        input_data = json.loads(raw_input)
 
         # Extract data from hook input
         tool_name = input_data.get("tool_name")
@@ -96,7 +110,8 @@ def main():
         agent_id = input_data.get("agent_id")
 
         # Skip logging our own tools to prevent recursion
-        if tool_name and tool_name.startswith("cortex_"):
+        # MCP tools are named like "mcp__omni-cortex__cortex_remember"
+        if tool_name and ("cortex_" in tool_name or "omni-cortex" in tool_name):
             print(json.dumps({}))
             return
 

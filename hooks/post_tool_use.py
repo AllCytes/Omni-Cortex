@@ -87,8 +87,13 @@ def truncate(text: str, max_length: int = 10000) -> str:
 def main():
     """Process PostToolUse hook."""
     try:
-        # Read input from stdin
-        input_data = json.load(sys.stdin)
+        # Read all input at once (more reliable than json.load on stdin)
+        raw_input = sys.stdin.read()
+        if not raw_input or not raw_input.strip():
+            print(json.dumps({}))
+            return
+
+        input_data = json.loads(raw_input)
 
         # Extract data from hook input
         tool_name = input_data.get("tool_name")
@@ -103,7 +108,8 @@ def main():
             error_message = tool_output.get("error") or tool_output.get("message")
 
         # Skip logging our own tools to prevent recursion
-        if tool_name and tool_name.startswith("cortex_"):
+        # MCP tools are named like "mcp__omni-cortex__cortex_remember"
+        if tool_name and ("cortex_" in tool_name or "omni-cortex" in tool_name):
             print(json.dumps({}))
             return
 
