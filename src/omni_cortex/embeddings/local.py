@@ -1,8 +1,17 @@
-"""Local embedding generation using sentence-transformers."""
+"""Local embedding generation using sentence-transformers.
 
+This module provides embedding generation with robust timeout handling
+to prevent hangs during model loading. The model loading happens in a
+subprocess that can be killed if it takes too long.
+"""
+
+import json
 import logging
 import sqlite3
-import struct
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -15,58 +24,130 @@ logger = logging.getLogger(__name__)
 # Model configuration
 DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
 EMBEDDING_DIMENSIONS = 384
-
-# Global model instance (lazy loaded)
-_model = None
-_model_name = None
+EMBEDDING_TIMEOUT = 60  # seconds - timeout for embedding generation
 
 
-def _get_model(model_name: str = DEFAULT_MODEL_NAME):
-    """Get or load the sentence-transformers model.
-
-    Args:
-        model_name: Name of the model to load
+def is_model_available() -> bool:
+    """Check if sentence-transformers is available.
 
     Returns:
-        SentenceTransformer model instance
+        True if the package is installed
     """
-    global _model, _model_name
+    try:
+        import sentence_transformers
+        return True
+    except ImportError:
+        return False
 
-    if _model is not None and _model_name == model_name:
-        return _model
+
+def _generate_embedding_subprocess(text: str, model_name: str, timeout: float) -> Optional[np.ndarray]:
+    """Generate embedding using a subprocess with timeout.
+
+    This runs the embedding generation in a completely separate process
+    that can be killed if it hangs during model loading.
+
+    Args:
+        text: Text to embed
+        model_name: Model name
+        timeout: Timeout in seconds
+
+    Returns:
+        Numpy array of embedding values, or None if failed/timed out
+    """
+    # Python script to run in subprocess
+    script = f'''
+import sys
+import json
+import numpy as np
+
+try:
+    from sentence_transformers import SentenceTransformer
+
+    # Load model and generate embedding
+    model = SentenceTransformer("{model_name}")
+    embedding = model.encode(sys.stdin.read(), convert_to_numpy=True)
+
+    # Output as JSON list
+    print(json.dumps(embedding.tolist()))
+except Exception as e:
+    print(json.dumps({{"error": str(e)}}))
+    sys.exit(1)
+'''
 
     try:
-        from sentence_transformers import SentenceTransformer
-
-        logger.info(f"Loading embedding model: {model_name}")
-        _model = SentenceTransformer(model_name)
-        _model_name = model_name
-        logger.info(f"Model loaded. Embedding dimension: {_model.get_sentence_embedding_dimension()}")
-        return _model
-    except ImportError:
-        raise ImportError(
-            "sentence-transformers is required for local embeddings. "
-            "Install with: pip install sentence-transformers"
+        # Run embedding generation in subprocess
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            input=text,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() if result.stderr else "Unknown error"
+            logger.error(f"Embedding subprocess failed: {error_msg}")
+            return None
+
+        # Parse output
+        output = result.stdout.strip()
+        if not output:
+            logger.error("Embedding subprocess returned empty output")
+            return None
+
+        data = json.loads(output)
+
+        if isinstance(data, dict) and "error" in data:
+            logger.error(f"Embedding generation error: {data['error']}")
+            return None
+
+        return np.array(data, dtype=np.float32)
+
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Embedding generation timed out after {timeout}s")
+        return None
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse embedding output: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Embedding subprocess error: {e}")
+        return None
 
 
 def generate_embedding(
     text: str,
     model_name: str = DEFAULT_MODEL_NAME,
+    timeout: float = EMBEDDING_TIMEOUT,
 ) -> np.ndarray:
     """Generate embedding for a text string.
+
+    Uses subprocess with timeout to prevent hangs during model loading.
 
     Args:
         text: Text to embed
         model_name: Name of the model to use
+        timeout: Timeout in seconds
 
     Returns:
         Numpy array of embedding values (384 dimensions)
-    """
-    model = _get_model(model_name)
 
-    # Generate embedding
-    embedding = model.encode(text, convert_to_numpy=True)
+    Raises:
+        RuntimeError: If embedding generation fails or times out
+    """
+    if not is_model_available():
+        raise ImportError(
+            "sentence-transformers is required for embeddings. "
+            "Install with: pip install sentence-transformers"
+        )
+
+    embedding = _generate_embedding_subprocess(text, model_name, timeout)
+
+    if embedding is None:
+        raise RuntimeError(
+            f"Embedding generation failed or timed out after {timeout}s. "
+            "This may happen on first run while the model downloads (~90MB). "
+            "Try again or disable embeddings with embedding_enabled: false in config."
+        )
 
     return embedding
 
@@ -74,32 +155,30 @@ def generate_embedding(
 def generate_embeddings_batch(
     texts: list[str],
     model_name: str = DEFAULT_MODEL_NAME,
-    batch_size: int = 32,
+    timeout: float = EMBEDDING_TIMEOUT,
 ) -> list[np.ndarray]:
-    """Generate embeddings for multiple texts efficiently.
+    """Generate embeddings for multiple texts.
+
+    Note: Currently processes one at a time for reliability.
+    Batch processing could be added later for performance.
 
     Args:
         texts: List of texts to embed
         model_name: Name of the model to use
-        batch_size: Batch size for processing
+        timeout: Timeout per text in seconds
 
     Returns:
-        List of embedding arrays
+        List of embedding arrays (may be shorter than input if some fail)
     """
-    if not texts:
-        return []
-
-    model = _get_model(model_name)
-
-    # Generate embeddings in batch
-    embeddings = model.encode(
-        texts,
-        convert_to_numpy=True,
-        batch_size=batch_size,
-        show_progress_bar=len(texts) > 100,
-    )
-
-    return list(embeddings)
+    embeddings = []
+    for text in texts:
+        try:
+            embedding = generate_embedding(text, model_name, timeout)
+            embeddings.append(embedding)
+        except Exception as e:
+            logger.warning(f"Failed to generate embedding: {e}")
+            # Continue with remaining texts
+    return embeddings
 
 
 def vector_to_blob(vector: np.ndarray) -> bytes:
@@ -111,7 +190,6 @@ def vector_to_blob(vector: np.ndarray) -> bytes:
     Returns:
         Bytes representation
     """
-    # Ensure float32
     vector = vector.astype(np.float32)
     return vector.tobytes()
 
@@ -247,6 +325,7 @@ def generate_and_store_embedding(
     content: str,
     context: Optional[str] = None,
     model_name: str = DEFAULT_MODEL_NAME,
+    timeout: float = EMBEDDING_TIMEOUT,
 ) -> Optional[str]:
     """Generate and store embedding for a memory.
 
@@ -256,6 +335,7 @@ def generate_and_store_embedding(
         content: Memory content
         context: Optional context
         model_name: Model to use
+        timeout: Timeout in seconds
 
     Returns:
         Embedding ID or None if failed
@@ -266,14 +346,14 @@ def generate_and_store_embedding(
         if context:
             text = f"{content}\n\nContext: {context}"
 
-        vector = generate_embedding(text, model_name)
+        vector = generate_embedding(text, model_name, timeout)
         embedding_id = store_embedding(conn, memory_id, vector, model_name)
 
         logger.debug(f"Generated embedding for memory {memory_id}")
         return embedding_id
 
     except Exception as e:
-        logger.error(f"Failed to generate embedding for {memory_id}: {e}")
+        logger.warning(f"Failed to generate embedding for {memory_id}: {e}")
         return None
 
 
@@ -306,15 +386,15 @@ def get_memories_without_embeddings(
 
 def backfill_embeddings(
     conn: sqlite3.Connection,
-    batch_size: int = 32,
     model_name: str = DEFAULT_MODEL_NAME,
+    timeout_per_memory: float = EMBEDDING_TIMEOUT,
 ) -> int:
     """Generate embeddings for all memories that don't have them.
 
     Args:
         conn: Database connection
-        batch_size: Processing batch size
         model_name: Model to use
+        timeout_per_memory: Timeout per memory in seconds
 
     Returns:
         Number of embeddings generated
@@ -323,40 +403,17 @@ def backfill_embeddings(
 
     while True:
         # Get batch of memories without embeddings
-        memories = get_memories_without_embeddings(conn, limit=batch_size)
+        memories = get_memories_without_embeddings(conn, limit=10)
 
         if not memories:
             break
 
-        # Prepare texts
-        texts = []
-        for _, content, context in memories:
-            text = content
-            if context:
-                text = f"{content}\n\nContext: {context}"
-            texts.append(text)
-
-        # Generate embeddings in batch
-        vectors = generate_embeddings_batch(texts, model_name)
-
-        # Store each embedding
-        for (memory_id, _, _), vector in zip(memories, vectors):
-            store_embedding(conn, memory_id, vector, model_name)
-            total_generated += 1
-
-        logger.info(f"Generated {len(memories)} embeddings (total: {total_generated})")
+        for memory_id, content, context in memories:
+            result = generate_and_store_embedding(
+                conn, memory_id, content, context, model_name, timeout_per_memory
+            )
+            if result:
+                total_generated += 1
+                logger.info(f"Generated embedding {total_generated}: {memory_id}")
 
     return total_generated
-
-
-def is_model_available() -> bool:
-    """Check if sentence-transformers is available.
-
-    Returns:
-        True if available
-    """
-    try:
-        import sentence_transformers
-        return True
-    except ImportError:
-        return False
