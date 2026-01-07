@@ -160,6 +160,11 @@ auto_provide_context: true
 context_depth: 3
 ```
 
+## Documentation
+
+- [Tool Reference](docs/TOOLS.md) - Complete documentation for all 15 tools with examples
+- [Configuration Guide](docs/CONFIGURATION.md) - Configuration options and troubleshooting
+
 ## Development
 
 ```bash
@@ -173,6 +178,14 @@ pytest
 black src tests
 ruff check src tests
 ```
+
+## Security
+
+Omni Cortex v1.0.3 has been security reviewed:
+- All SQL queries use parameterized statements
+- Input validation via Pydantic models
+- Model name validation prevents code injection
+- YAML loading uses `safe_load()`
 
 ## License
 

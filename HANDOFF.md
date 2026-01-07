@@ -87,13 +87,13 @@ omni-cortex-setup
 - [ ] SQLite dump export format
 
 ### Phase 6: Testing & Documentation
-- [ ] `test_embeddings.py`
+- [x] `test_embeddings.py` (7 tests including security validation)
 - [ ] Integration tests
-- [ ] Document all 15 tools with examples
-- [ ] Document configuration options
-- [ ] Document hook setup instructions
-- [ ] Troubleshooting guide
-- [ ] Code review for security
+- [x] Document all 15 tools with examples (docs/TOOLS.md)
+- [x] Document configuration options (docs/CONFIGURATION.md)
+- [x] Document hook setup instructions (in CONFIGURATION.md)
+- [x] Troubleshooting guide (in CONFIGURATION.md)
+- [x] Code review for security
 - [ ] Performance profiling
 
 ## Recently Completed (Jan 7, 2026 session)
@@ -118,7 +118,18 @@ omni-cortex-setup
 - [x] Created `test_activities.py` (8 tests)
 - [x] Created `test_search.py` (11 tests)
 - [x] Created `test_sessions.py` (13 tests)
-- Total: **41 tests passing**
+- [x] Created `test_embeddings.py` (7 tests) - includes model name validation security tests
+- Total: **48 tests passing**
+
+### Security Review (completed Jan 7, 2026)
+- [x] All SQL queries use parameterized statements (no SQL injection)
+- [x] FTS5 queries properly escape special characters
+- [x] Input validation via Pydantic models with constraints
+- [x] YAML loading uses `safe_load()` (no code execution)
+- [x] **Fixed: Model name validation** - prevents code injection via config file
+  - Added `_validate_model_name()` function to `embeddings/local.py`
+  - Only allows alphanumeric, hyphens, underscores, forward slashes
+  - Blocks quotes, semicolons, backticks, and shell metacharacters
 
 ### Important: Restart Required
 After these fixes, you must **restart Claude Code** to pick up the changes. The MCP server runs as a subprocess and won't see code changes until restarted.
@@ -149,21 +160,14 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.0.2 - 41 tests passing, all 15 tools working.
+Status: v1.0.3 - 48 tests passing, all 15 tools working, security reviewed, fully documented.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
-
-Please test:
-1. cortex_start_session
-2. cortex_remember (should be instant now)
-3. cortex_recall with keyword search
 
 Remaining tasks:
 1. Global index sync across projects
 2. SQLite dump export format
 3. Integration tests
-4. Documentation (all 15 tools with examples)
-5. Code review for security
-6. Performance profiling
+4. Performance profiling
 ```
 
 ---

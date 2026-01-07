@@ -7,6 +7,7 @@ subprocess that can be killed if it takes too long.
 
 import json
 import logging
+import re
 import sqlite3
 import subprocess
 import sys
@@ -26,6 +27,9 @@ DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
 EMBEDDING_DIMENSIONS = 384
 EMBEDDING_TIMEOUT = 60  # seconds - timeout for embedding generation
 
+# Security: allowed model name pattern (alphanumeric, hyphens, underscores, forward slashes for org/model)
+MODEL_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-/]+$')
+
 
 def is_model_available() -> bool:
     """Check if sentence-transformers is available.
@@ -38,6 +42,22 @@ def is_model_available() -> bool:
         return True
     except ImportError:
         return False
+
+
+def _validate_model_name(model_name: str) -> None:
+    """Validate model name to prevent code injection.
+
+    Args:
+        model_name: The model name to validate
+
+    Raises:
+        ValueError: If model name contains invalid characters
+    """
+    if not MODEL_NAME_PATTERN.match(model_name):
+        raise ValueError(
+            f"Invalid model name '{model_name}'. "
+            "Model names may only contain letters, numbers, hyphens, underscores, and forward slashes."
+        )
 
 
 def _generate_embedding_subprocess(text: str, model_name: str, timeout: float) -> Optional[np.ndarray]:
@@ -54,6 +74,9 @@ def _generate_embedding_subprocess(text: str, model_name: str, timeout: float) -
     Returns:
         Numpy array of embedding values, or None if failed/timed out
     """
+    # Validate model name to prevent code injection
+    _validate_model_name(model_name)
+
     # Python script to run in subprocess
     script = f'''
 import sys
