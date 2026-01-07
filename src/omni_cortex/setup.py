@@ -140,15 +140,22 @@ def setup_hooks() -> bool:
     # Get Python executable
     python_exe = sys.executable
 
-    # Helper to check if hook already exists
+    # Helper to check if hook already exists (handles both old and new format)
     def hook_exists(hook_list, script_name):
         for h in hook_list:
+            # Check old format
             cmd = str(h.get("command", ""))
             if "omni-cortex" in cmd or script_name in cmd:
                 return True
+            # Check new format (matcher + hooks array)
+            if "hooks" in h:
+                for inner_hook in h.get("hooks", []):
+                    inner_cmd = str(inner_hook.get("command", ""))
+                    if "omni-cortex" in inner_cmd or script_name in inner_cmd:
+                        return True
         return False
 
-    # Configure hooks
+    # Configure hooks (new format with matcher and hooks array)
     hooks_config = {
         "PreToolUse": ("pre_tool_use.py", f'"{python_exe}" "{hooks_dir / "pre_tool_use.py"}"'),
         "PostToolUse": ("post_tool_use.py", f'"{python_exe}" "{hooks_dir / "post_tool_use.py"}"'),
@@ -160,9 +167,15 @@ def setup_hooks() -> bool:
             settings["hooks"][hook_name] = []
 
         if not hook_exists(settings["hooks"][hook_name], script_name):
+            # New format: matcher + hooks array
             settings["hooks"][hook_name].append({
-                "type": "command",
-                "command": command,
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": command,
+                    }
+                ]
             })
 
     # Write settings
