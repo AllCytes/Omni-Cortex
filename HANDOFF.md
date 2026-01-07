@@ -3,11 +3,11 @@
 **Date:** January 7, 2025
 **Project:** D:\Projects\omni-cortex
 **GitHub:** https://github.com/AllCytes/Omni-Cortex
-**PyPI:** https://pypi.org/project/omni-cortex/1.0.0/
+**PyPI:** https://pypi.org/project/omni-cortex/
 
 ---
 
-## Current Status: v1.0.0 PUBLISHED 🎉
+## Current Status: v1.0.1 PUBLISHED 🎉
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
@@ -39,6 +39,7 @@ omni-cortex-setup
 - Activity tools (3 tools)
 - Auto-initialize database in hooks (out-of-box experience)
 - `omni-cortex-setup` command for automatic configuration
+- **v1.0.1**: Fixed hooks format for Claude Code update (matcher + hooks array)
 
 ### Phase 3: Semantic Search ✅
 - `embeddings/local.py` (sentence-transformers, all-MiniLM-L6-v2, 384 dims)
@@ -129,7 +130,7 @@ Copy this to start a new session:
 
 Continue building **Omni Cortex MCP** at `D:\Projects\omni-cortex`.
 
-**Status**: v1.0.0 published to PyPI and GitHub. All 15 tools + semantic search working.
+**Status**: v1.0.1 published to PyPI and GitHub. All 15 tools + semantic search working.
 
 **Links**:
 - GitHub: https://github.com/AllCytes/Omni-Cortex
