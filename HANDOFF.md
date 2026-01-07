@@ -88,7 +88,7 @@ omni-cortex-setup
 
 ### Phase 6: Testing & Documentation
 - [x] `test_embeddings.py` (7 tests including security validation)
-- [ ] Integration tests
+- [x] Integration tests (9 end-to-end workflow tests)
 - [x] Document all 15 tools with examples (docs/TOOLS.md)
 - [x] Document configuration options (docs/CONFIGURATION.md)
 - [x] Document hook setup instructions (in CONFIGURATION.md)
@@ -119,7 +119,7 @@ omni-cortex-setup
 - [x] Created `test_search.py` (11 tests)
 - [x] Created `test_sessions.py` (13 tests)
 - [x] Created `test_embeddings.py` (7 tests) - includes model name validation security tests
-- Total: **48 tests passing**
+- Total: **57 tests passing**
 
 ### Security Review (completed Jan 7, 2026)
 - [x] All SQL queries use parameterized statements (no SQL injection)
@@ -160,14 +160,13 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.0.3 - 48 tests passing, all 15 tools working, security reviewed, fully documented.
+Status: v1.0.3 - 57 tests passing (incl. integration), all 15 tools working, security reviewed, fully documented.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
 
 Remaining tasks:
 1. Global index sync across projects
 2. SQLite dump export format
-3. Integration tests
-4. Performance profiling
+3. Performance profiling
 ```
 
 ---
