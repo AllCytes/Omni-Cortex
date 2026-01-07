@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "omni-cortex"
+version = "1.0.0"
+description = "Universal Memory MCP for Claude Code - dual-layer activity logging and knowledge storage"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Tony" }
+]
+keywords = ["mcp", "claude", "memory", "ai", "claude-code", "anthropic", "llm", "semantic-search"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/TonySimonovsky/omni-cortex"
+Repository = "https://github.com/TonySimonovsky/omni-cortex"
+Issues = "https://github.com/TonySimonovsky/omni-cortex/issues"
+Documentation = "https://github.com/TonySimonovsky/omni-cortex#readme"
+dependencies = [
+    "mcp>=1.0.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+semantic = [
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.24.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+omni-cortex = "omni_cortex.server:main"
+omni-cortex-setup = "omni_cortex.setup:main"
+
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omni_cortex"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/hooks",
+    "/scripts",
+    "/README.md",
+]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"hooks" = "share/omni-cortex/hooks"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
