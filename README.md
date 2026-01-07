@@ -44,7 +44,7 @@ omni-cortex-setup
 ### From Source
 
 ```bash
-git clone https://github.com/TonySimonovsky/omni-cortex.git
+git clone https://github.com/AllCytes/Omni-Cortex.git
 cd omni-cortex
 pip install -e ".[semantic]"
 python -m omni_cortex.setup
