@@ -15,9 +15,9 @@ class CortexConfig:
     # Database
     schema_version: str = "1.0"
 
-    # Embedding
+    # Embedding (disabled by default - model loading can be slow)
     embedding_model: str = "all-MiniLM-L6-v2"
-    embedding_enabled: bool = True
+    embedding_enabled: bool = False
 
     # Decay
     decay_rate_per_day: float = 0.5

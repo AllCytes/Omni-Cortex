@@ -99,15 +99,15 @@ omni-cortex-setup
 ## Recently Completed (Jan 7, 2026 session)
 
 ### Bug Fixes (resolves MCP "stuck" issues)
-- [x] Fixed Session bug in `cortex_start_session` - was passing Session objects to formatting function that expected dicts (caused `'Session' object has no attribute 'get'` error)
-- [x] Fixed FK constraint in `create_activity` - agent upsert must happen BEFORE activity insert (caused `FOREIGN KEY constraint failed` error)
-- [x] Fixed embedding model hang in `cortex_remember` - added 30s timeout to model loading, checks `embedding_enabled` config before attempting
+- [x] Fixed Session bug in `cortex_start_session` - was passing Session objects to formatting function that expected dicts
+- [x] Fixed FK constraint in `create_activity` - agent upsert must happen BEFORE activity insert
+- [x] **REBUILT** semantic search from scratch - uses subprocess with 60s timeout (can actually be killed)
 
-### Workaround: Disable Embeddings
-If `cortex_remember` still hangs, disable embeddings by creating `.omni-cortex/config.yaml`:
-```yaml
-embedding_enabled: false
-```
+### Semantic Search Status
+**Embeddings DISABLED by default** - The sentence-transformers model loading is unreliable on Windows (hangs during first-time model download). Until a better solution is found:
+- Default: `embedding_enabled: false` in config.py
+- Keyword search works perfectly
+- To enable: set `embedding_enabled: true` in `.omni-cortex/config.yaml` (may hang on first use)
 
 ### New Features
 - [x] Added `cortex://tags` MCP resource
@@ -149,8 +149,13 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.0.2 VERIFIED - 41 tests passing, all 15 tools working.
-Embeddings currently DISABLED via .omni-cortex/config.yaml (prevents hang issue).
+Status: v1.0.2 - 41 tests passing, all 15 tools working.
+Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
+
+Please test:
+1. cortex_start_session
+2. cortex_remember (should be instant now)
+3. cortex_recall with keyword search
 
 Remaining tasks:
 1. Global index sync across projects
@@ -159,8 +164,6 @@ Remaining tasks:
 4. Documentation (all 15 tools with examples)
 5. Code review for security
 6. Performance profiling
-
-To re-enable semantic search: set embedding_enabled: true in .omni-cortex/config.yaml
 ```
 
 ---
