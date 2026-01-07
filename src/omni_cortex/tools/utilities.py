@@ -41,7 +41,7 @@ class ExportInput(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True)
 
-    format: str = Field("markdown", description="Export format: markdown, json")
+    format: str = Field("markdown", description="Export format: markdown, json, sqlite")
     include_activities: bool = Field(True, description="Include activities")
     include_memories: bool = Field(True, description="Include memories")
     since: Optional[str] = Field(None, description="Export data since this date (ISO 8601)")
@@ -244,6 +244,35 @@ def register_utility_tools(mcp: FastMCP) -> None:
         """
         try:
             conn = init_database()
+
+            # SQLite dump format
+            if params.format == "sqlite":
+                if not params.output_path:
+                    return "SQLite export requires output_path parameter."
+
+                from ..config import get_project_db_path
+                import shutil
+
+                source_path = get_project_db_path()
+                if not source_path.exists():
+                    return f"Database not found: {source_path}"
+
+                # Ensure all data is flushed to disk (checkpoint WAL)
+                try:
+                    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                except Exception:
+                    pass  # May fail if not in WAL mode
+
+                # Copy the database file
+                shutil.copy2(source_path, params.output_path)
+
+                # Also copy WAL and SHM files if they exist
+                for suffix in ["-wal", "-shm"]:
+                    wal_path = source_path.parent / (source_path.name + suffix)
+                    if wal_path.exists():
+                        shutil.copy2(wal_path, params.output_path + suffix)
+
+                return f"SQLite database exported to: {params.output_path}"
 
             data = {
                 "exported_at": now_iso(),

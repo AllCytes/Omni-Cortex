@@ -571,13 +571,13 @@ Export memories and activities to various formats.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| format | string | No | Export format: `markdown` or `json` (default: markdown) |
-| include_memories | bool | No | Include memories (default: true) |
+| format | string | No | Export format: `markdown`, `json`, or `sqlite` (default: markdown) |
 | include_activities | bool | No | Include activities (default: true) |
+| include_memories | bool | No | Include memories (default: true) |
 | since | string | No | Export data since this date (ISO 8601) |
-| output_path | string | No | File path to save export |
+| output_path | string | No | File path to save export (required for sqlite format) |
 
-**Example:**
+**Example - Markdown export:**
 
 ```
 cortex_export({
@@ -586,6 +586,22 @@ cortex_export({
   include_activities: false
 })
 ```
+
+**Example - SQLite dump:**
+
+```
+cortex_export({
+  format: "sqlite",
+  output_path: "/path/to/backup.db"
+})
+```
+
+**Response (SQLite):**
+```
+SQLite database exported to: /path/to/backup.db
+```
+
+**Note:** The SQLite format creates a complete copy of the database file, which can be opened with any SQLite client or restored as a backup.
 
 ---
 

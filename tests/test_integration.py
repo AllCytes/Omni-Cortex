@@ -443,6 +443,57 @@ class TestUtilityTools:
         close_all_connections()
 
     @pytest.mark.asyncio
+    async def test_export_sqlite(self, integration_env, tmp_path):
+        """Test exporting database as SQLite file."""
+        from omni_cortex.database.connection import init_database, close_all_connections
+        from omni_cortex.tools.memories import RememberInput, ForgetInput
+        from omni_cortex.tools.memories import register_memory_tools
+        from omni_cortex.tools.utilities import ExportInput
+        from omni_cortex.tools.utilities import register_utility_tools
+        from mcp.server.fastmcp import FastMCP
+        import sqlite3
+
+        conn = init_database()
+
+        mcp = FastMCP("test")
+        register_memory_tools(mcp)
+        register_utility_tools(mcp)
+
+        cortex_remember = mcp._tool_manager._tools["cortex_remember"].fn
+        cortex_export = mcp._tool_manager._tools["cortex_export"].fn
+        cortex_forget = mcp._tool_manager._tools["cortex_forget"].fn
+
+        # Create a memory
+        result = await cortex_remember(RememberInput(
+            content="SQLite export test memory",
+            tags=["sqlite-export-test"]
+        ))
+        memory_id = result.split("Remembered: ")[1].split("\n")[0]
+
+        # Export as SQLite
+        export_path = tmp_path / "export.db"
+        export_result = await cortex_export(ExportInput(
+            format="sqlite",
+            output_path=str(export_path)
+        ))
+
+        assert "exported to" in export_result
+        assert export_path.exists()
+
+        # Verify the exported database is valid SQLite
+        export_conn = sqlite3.connect(str(export_path))
+        export_cursor = export_conn.cursor()
+        export_cursor.execute("SELECT COUNT(*) FROM memories")
+        count = export_cursor.fetchone()[0]
+        assert count >= 1
+        export_conn.close()
+
+        # Cleanup
+        await cortex_forget(ForgetInput(id=memory_id, confirm=True))
+
+        close_all_connections()
+
+    @pytest.mark.asyncio
     async def test_export_markdown(self, integration_env):
         """Test exporting data to markdown."""
         from omni_cortex.database.connection import init_database, close_all_connections

@@ -84,7 +84,7 @@ omni-cortex-setup
 
 ### Phase 5: Global Index & Polish
 - [x] Global index sync across projects (database/sync.py + 3 new tools)
-- [ ] SQLite dump export format
+- [x] SQLite dump export format (added to cortex_export)
 
 ### Phase 6: Testing & Documentation
 - [x] `test_embeddings.py` (7 tests including security validation)
@@ -94,7 +94,7 @@ omni-cortex-setup
 - [x] Document hook setup instructions (in CONFIGURATION.md)
 - [x] Troubleshooting guide (in CONFIGURATION.md)
 - [x] Code review for security
-- [ ] Performance profiling
+- [x] Performance profiling (test_performance.py with 6 benchmarks)
 
 ## Recently Completed (Jan 7, 2026 session)
 
@@ -119,7 +119,7 @@ omni-cortex-setup
 - [x] Created `test_search.py` (11 tests)
 - [x] Created `test_sessions.py` (13 tests)
 - [x] Created `test_embeddings.py` (7 tests) - includes model name validation security tests
-- Total: **57 tests passing**
+- Total: **66 tests passing**
 
 ### Security Review (completed Jan 7, 2026)
 - [x] All SQL queries use parameterized statements (no SQL injection)
@@ -160,12 +160,12 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.0.4 - 59 tests passing, 18 tools (incl. 3 global sync tools), security reviewed, fully documented.
+Status: v1.0.5 - 66 tests passing, 18 tools, all phases complete.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
 
-Remaining tasks:
-1. SQLite dump export format
-2. Performance profiling
+All planned features complete. Optional future work:
+- API fallback for embeddings (Claude/OpenAI)
+- Performance optimizations based on profiling results
 ```
 
 ---
