@@ -1,5 +1,6 @@
 """Test fixtures for Omni Cortex."""
 
+import gc
 import os
 import tempfile
 from pathlib import Path
@@ -10,10 +11,16 @@ import pytest
 @pytest.fixture
 def temp_db_path():
     """Create a temporary database path."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         db_dir = Path(tmpdir) / ".omni-cortex"
         db_dir.mkdir(parents=True)
-        yield db_dir / "cortex.db"
+        db_path = db_dir / "cortex.db"
+        yield db_path
+
+        # Ensure connections are closed before cleanup
+        from omni_cortex.database.connection import close_all_connections
+        close_all_connections()
+        gc.collect()
 
 
 @pytest.fixture

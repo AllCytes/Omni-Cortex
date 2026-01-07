@@ -80,6 +80,20 @@ def create_activity(
         tool_output = truncate_json(tool_output, 10000)
 
     cursor = conn.cursor()
+
+    # Upsert agent BEFORE inserting activity (foreign key constraint)
+    if data.agent_id:
+        cursor.execute(
+            """
+            INSERT INTO agents (id, type, first_seen, last_seen, total_activities)
+            VALUES (?, 'main', ?, ?, 1)
+            ON CONFLICT(id) DO UPDATE SET
+                last_seen = ?,
+                total_activities = total_activities + 1
+            """,
+            (data.agent_id, timestamp, timestamp, timestamp),
+        )
+
     cursor.execute(
         """
         INSERT INTO activities (
@@ -104,19 +118,6 @@ def create_activity(
             data.file_path,
         ),
     )
-
-    # Update agent last_seen if agent_id provided
-    if data.agent_id:
-        cursor.execute(
-            """
-            INSERT INTO agents (id, type, first_seen, last_seen, total_activities)
-            VALUES (?, 'main', ?, ?, 1)
-            ON CONFLICT(id) DO UPDATE SET
-                last_seen = ?,
-                total_activities = total_activities + 1
-            """,
-            (data.agent_id, timestamp, timestamp, timestamp),
-        )
 
     conn.commit()
 

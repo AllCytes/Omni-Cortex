@@ -142,6 +142,83 @@ async def get_config() -> str:
     }, indent=2)
 
 
+@mcp.resource("cortex://tags")
+async def get_tags() -> str:
+    """Get all tags used in memories with usage counts."""
+    try:
+        conn = init_database()
+        cursor = conn.cursor()
+
+        # Query all memories and extract tags
+        cursor.execute("SELECT tags FROM memories WHERE tags IS NOT NULL")
+
+        import json
+        tag_counts: dict[str, int] = {}
+
+        for row in cursor.fetchall():
+            tags_json = row["tags"]
+            if tags_json:
+                try:
+                    tags = json.loads(tags_json)
+                    for tag in tags:
+                        tag_counts[tag] = tag_counts.get(tag, 0) + 1
+                except json.JSONDecodeError:
+                    pass
+
+        # Sort by count descending
+        sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)
+
+        return json.dumps({
+            "total_unique_tags": len(sorted_tags),
+            "tags": [{"name": name, "count": count} for name, count in sorted_tags],
+        }, indent=2)
+
+    except Exception as e:
+        return f"Error getting tags: {e}"
+
+
+@mcp.resource("cortex://sessions/recent")
+async def get_recent_sessions_resource() -> str:
+    """Get recent sessions with summaries."""
+    try:
+        conn = init_database()
+        from .models.session import get_recent_sessions, get_session_summary
+
+        sessions = get_recent_sessions(conn, limit=10)
+
+        import json
+        result = []
+
+        for session in sessions:
+            session_data = {
+                "id": session.id,
+                "project_path": session.project_path,
+                "started_at": session.started_at,
+                "ended_at": session.ended_at,
+                "summary": session.summary,
+            }
+
+            # Get summary if available
+            summary = get_session_summary(conn, session.id)
+            if summary:
+                session_data["stats"] = {
+                    "total_activities": summary.total_activities,
+                    "memories_created": summary.total_memories_created,
+                    "tools_used": summary.tools_used,
+                    "key_learnings": summary.key_learnings,
+                }
+
+            result.append(session_data)
+
+        return json.dumps({
+            "total_sessions": len(result),
+            "sessions": result,
+        }, indent=2)
+
+    except Exception as e:
+        return f"Error getting recent sessions: {e}"
+
+
 def main():
     """Run the MCP server."""
     mcp.run()

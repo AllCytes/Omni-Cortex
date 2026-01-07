@@ -142,7 +142,7 @@ def register_session_tools(mcp: FastMCP) -> None:
                     if learnings or decisions or errors:
                         lines.append("")
                         lines.append(format_session_context_markdown(
-                            past_sessions,
+                            [s.model_dump() for s in past_sessions],
                             learnings[:5],
                             decisions[:5],
                             errors[:5],

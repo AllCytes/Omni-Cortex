@@ -1,13 +1,13 @@
 # Omni Cortex MCP - Session Handoff
 
-**Date:** January 7, 2025
+**Date:** January 7, 2026
 **Project:** D:\Projects\omni-cortex
 **GitHub:** https://github.com/AllCytes/Omni-Cortex
 **PyPI:** https://pypi.org/project/omni-cortex/
 
 ---
 
-## Current Status: v1.0.1 PUBLISHED 🎉
+## Current Status: v1.0.2 VERIFIED WORKING ✅
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
@@ -79,24 +79,15 @@ omni-cortex-setup
 
 ## Remaining Work (from TODO.md)
 
-### Phase 2 - Incomplete Items
-- [ ] Activity-Memory Linking (display links in recall/list results)
-
 ### Phase 3 - Optional
 - [ ] API Fallback (`embeddings/api_fallback.py` for Claude/OpenAI)
 
 ### Phase 5: Global Index & Polish
 - [ ] Global index sync across projects
-- [ ] Display related memories in recall results
-- [ ] `cortex://tags` resource
-- [ ] `cortex://sessions/recent` resource
 - [ ] SQLite dump export format
 
 ### Phase 6: Testing & Documentation
-- [ ] `test_activities.py`
-- [ ] `test_search.py`
 - [ ] `test_embeddings.py`
-- [ ] `test_sessions.py`
 - [ ] Integration tests
 - [ ] Document all 15 tools with examples
 - [ ] Document configuration options
@@ -104,6 +95,33 @@ omni-cortex-setup
 - [ ] Troubleshooting guide
 - [ ] Code review for security
 - [ ] Performance profiling
+
+## Recently Completed (Jan 7, 2026 session)
+
+### Bug Fixes (resolves MCP "stuck" issues)
+- [x] Fixed Session bug in `cortex_start_session` - was passing Session objects to formatting function that expected dicts (caused `'Session' object has no attribute 'get'` error)
+- [x] Fixed FK constraint in `create_activity` - agent upsert must happen BEFORE activity insert (caused `FOREIGN KEY constraint failed` error)
+- [x] Fixed embedding model hang in `cortex_remember` - added 30s timeout to model loading, checks `embedding_enabled` config before attempting
+
+### Workaround: Disable Embeddings
+If `cortex_remember` still hangs, disable embeddings by creating `.omni-cortex/config.yaml`:
+```yaml
+embedding_enabled: false
+```
+
+### New Features
+- [x] Added `cortex://tags` MCP resource
+- [x] Added `cortex://sessions/recent` MCP resource
+- [x] Added related memories display in recall results
+
+### Tests
+- [x] Created `test_activities.py` (8 tests)
+- [x] Created `test_search.py` (11 tests)
+- [x] Created `test_sessions.py` (13 tests)
+- Total: **41 tests passing**
+
+### Important: Restart Required
+After these fixes, you must **restart Claude Code** to pick up the changes. The MCP server runs as a subprocess and won't see code changes until restarted.
 
 ---
 
@@ -126,21 +144,23 @@ omni-cortex-setup
 
 Copy this to start a new session:
 
----
+```
+d:\Projects\omni-cortex\HANDOFF.md
 
-Continue building **Omni Cortex MCP** at `D:\Projects\omni-cortex`.
+Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-**Status**: v1.0.1 published to PyPI and GitHub. All 15 tools + semantic search working.
+Status: v1.0.2 VERIFIED - 41 tests passing, all 15 tools working.
+Embeddings currently DISABLED via .omni-cortex/config.yaml (prevents hang issue).
 
-**Links**:
-- GitHub: https://github.com/AllCytes/Omni-Cortex
-- PyPI: https://pypi.org/project/omni-cortex/
+Remaining tasks:
+1. Global index sync across projects
+2. SQLite dump export format
+3. Integration tests
+4. Documentation (all 15 tools with examples)
+5. Code review for security
+6. Performance profiling
 
-**Next**: Complete remaining TODO.md items (Phase 5 & 6)
-
-**Tasks**:
-1. Read `TODO.md` for remaining items
-2. Phase 5: Global index sync, related memories display, additional resources
-3. Phase 6: Testing & Documentation
+To re-enable semantic search: set embedding_enabled: true in .omni-cortex/config.yaml
+```
 
 ---

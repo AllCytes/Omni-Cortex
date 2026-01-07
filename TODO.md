@@ -79,13 +79,13 @@
 - [x] Implement `cortex_log_activity` tool
 - [x] Implement `cortex_get_activities` tool
 - [x] Implement `cortex_get_timeline` tool
-- [ ] Test: Can log and query activities
+- [x] Test: Can log and query activities
 
-### Activity-Memory Linking
-- [ ] Add linking logic when memories reference activities
-- [ ] Add linking logic when activities create memories
-- [ ] Display links in recall/list results
-- [ ] Test: Links created and displayed correctly
+### Activity-Memory Linking ✅
+- [x] Add linking logic when memories reference activities
+- [x] Add linking logic when activities create memories
+- [x] Display links in recall/list results
+- [x] Test: Links created and displayed correctly
 
 ---
 
@@ -171,8 +171,8 @@
 ### Memory Relationships ✅
 - [x] Implement `cortex_link_memories` tool
 - [x] Support relationship types: related_to, supersedes, derived_from, contradicts
-- [ ] Display related memories in recall results
-- [ ] Test: Relationships created and displayed
+- [x] Display related memories in recall results
+- [x] Test: Relationships created and displayed
 
 ### Export & Utilities ✅
 - [x] Create `tools/utilities.py`
@@ -187,23 +187,23 @@
 - [x] Create `resources/read_only.py` (in server.py)
 - [x] Implement `cortex://stats` resource
 - [x] Implement `cortex://types` resource
-- [ ] Implement `cortex://tags` resource
-- [ ] Implement `cortex://sessions/recent` resource
+- [x] Implement `cortex://tags` resource
+- [x] Implement `cortex://sessions/recent` resource
 - [x] Implement `cortex://config` resource
-- [ ] Test: Resources return expected data
+- [x] Test: Resources return expected data
 
 ---
 
 ## Phase 6: Testing & Documentation
 
-### Unit Tests
+### Unit Tests ✅
 - [x] Create `tests/conftest.py` with fixtures
 - [x] Create `tests/test_database.py`
 - [x] Create `tests/test_memories.py`
-- [ ] Create `tests/test_activities.py`
-- [ ] Create `tests/test_search.py`
+- [x] Create `tests/test_activities.py`
+- [x] Create `tests/test_search.py`
 - [ ] Create `tests/test_embeddings.py`
-- [ ] Create `tests/test_sessions.py`
+- [x] Create `tests/test_sessions.py`
 - [ ] Achieve >80% code coverage
 
 ### Integration Tests

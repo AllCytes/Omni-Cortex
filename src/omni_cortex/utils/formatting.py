@@ -7,11 +7,15 @@ from datetime import datetime
 from .timestamps import format_relative_time
 
 
-def format_memory_markdown(memory: dict[str, Any]) -> str:
+def format_memory_markdown(
+    memory: dict[str, Any],
+    related_memories: Optional[list[dict[str, Any]]] = None,
+) -> str:
     """Format a memory as markdown.
 
     Args:
         memory: Memory dictionary
+        related_memories: Optional list of related memory dicts with relationship info
 
     Returns:
         Markdown formatted string
@@ -61,15 +65,30 @@ def format_memory_markdown(memory: dict[str, Any]) -> str:
     status = memory.get("status", "fresh")
     lines.append(f"**Status:** {status}")
 
+    # Related memories
+    if related_memories:
+        lines.append("")
+        lines.append("**Related:**")
+        for related in related_memories[:3]:  # Limit to 3
+            rel_type = related.get("relationship_type", "related_to")
+            rel_id = related.get("id", "unknown")
+            rel_content = related.get("content", "")[:50]
+            lines.append(f"  - [{rel_type}] {rel_id}: {rel_content}...")
+
     return "\n".join(lines)
 
 
-def format_memories_list_markdown(memories: list[dict[str, Any]], total: int = 0) -> str:
+def format_memories_list_markdown(
+    memories: list[dict[str, Any]],
+    total: int = 0,
+    related_map: Optional[dict[str, list[dict[str, Any]]]] = None,
+) -> str:
     """Format a list of memories as markdown.
 
     Args:
         memories: List of memory dictionaries
         total: Total count (for pagination info)
+        related_map: Optional dict mapping memory IDs to their related memories
 
     Returns:
         Markdown formatted string
@@ -82,7 +101,10 @@ def format_memories_list_markdown(memories: list[dict[str, Any]], total: int = 0
     lines.append("")
 
     for memory in memories:
-        lines.append(format_memory_markdown(memory))
+        # Get related memories for this memory if available
+        memory_id = memory.get("id")
+        related = related_map.get(memory_id) if related_map and memory_id else None
+        lines.append(format_memory_markdown(memory, related_memories=related))
         lines.append("")
 
     return "\n".join(lines)

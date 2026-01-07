@@ -19,11 +19,12 @@ from ..models.memory import (
     list_memories,
     touch_memory,
 )
-from ..models.relationship import create_relationship, VALID_RELATIONSHIP_TYPES
+from ..models.relationship import create_relationship, get_relationships, VALID_RELATIONSHIP_TYPES
 from ..search.hybrid import search
 from ..search.ranking import calculate_relevance_score
 from ..utils.formatting import format_memory_markdown, format_memories_list_markdown
 from ..embeddings import generate_and_store_embedding, is_model_available
+from ..config import load_config
 
 
 # === Input Models ===
@@ -183,9 +184,10 @@ def register_memory_tools(mcp: FastMCP) -> None:
                         relationship_type="related_to",
                     )
 
-            # Generate embedding for semantic search
+            # Generate embedding for semantic search (if enabled)
             has_embedding = False
-            if is_model_available():
+            config = load_config()
+            if config.embedding_enabled and is_model_available():
                 try:
                     generate_and_store_embedding(
                         conn,
@@ -194,9 +196,11 @@ def register_memory_tools(mcp: FastMCP) -> None:
                         context=memory.context,
                     )
                     has_embedding = True
-                except Exception:
+                except Exception as e:
                     # Non-fatal: embedding generation is optional
-                    pass
+                    # Log timeout errors to help with debugging
+                    import logging
+                    logging.getLogger(__name__).warning(f"Embedding generation failed: {e}")
 
             embedding_status = "with embedding" if has_embedding else "no embedding"
             return (
@@ -274,9 +278,32 @@ def register_memory_tools(mcp: FastMCP) -> None:
             # Sort by final score
             scored_results.sort(key=lambda x: x[1], reverse=True)
 
+            # Build related memories map
+            related_map: dict[str, list[dict]] = {}
+            for memory, _ in scored_results:
+                relationships = get_relationships(conn, memory.id)
+                if relationships:
+                    related_list = []
+                    for rel in relationships[:3]:  # Limit to 3 related
+                        # Get the related memory ID (could be source or target)
+                        related_id = (
+                            rel.target_memory_id
+                            if rel.source_memory_id == memory.id
+                            else rel.source_memory_id
+                        )
+                        related_mem = get_memory(conn, related_id)
+                        if related_mem:
+                            related_list.append({
+                                "id": related_mem.id,
+                                "content": related_mem.content,
+                                "relationship_type": rel.relationship_type,
+                            })
+                    if related_list:
+                        related_map[memory.id] = related_list
+
             # Format output - convert Memory objects to dicts for formatting
             memories = [m.model_dump() for m, _ in scored_results]
-            return format_memories_list_markdown(memories, len(memories))
+            return format_memories_list_markdown(memories, len(memories), related_map=related_map)
 
         except Exception as e:
             return f"Error searching memories: {e}"
@@ -362,8 +389,9 @@ def register_memory_tools(mcp: FastMCP) -> None:
             if not updated:
                 return f"Memory not found: {params.id}"
 
-            # Regenerate embedding if content or context changed
-            if (params.content is not None or params.context is not None) and is_model_available():
+            # Regenerate embedding if content or context changed (if enabled)
+            config = load_config()
+            if (params.content is not None or params.context is not None) and config.embedding_enabled and is_model_available():
                 try:
                     generate_and_store_embedding(
                         conn,
