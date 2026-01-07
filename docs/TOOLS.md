@@ -467,6 +467,102 @@ cortex_review_memories({
 
 ---
 
+### cortex_global_search
+
+Search memories across all projects via the global index.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| query | string | Yes | Search query (min 1 char) |
+| type_filter | string | No | Filter by memory type |
+| tags_filter | string[] | No | Filter by tags |
+| project_filter | string | No | Filter by project path (substring match) |
+| limit | int | No | Maximum results 1-100 (default: 20) |
+
+**Example:**
+
+```
+cortex_global_search({
+  query: "authentication pattern",
+  project_filter: "my-api",
+  limit: 10
+})
+```
+
+**Response:**
+```markdown
+# Global Search Results (3)
+
+## Project: D:\Projects\my-api
+
+### [solution] mem_abc123
+Implemented JWT authentication with refresh tokens...
+**Tags:** auth, jwt, security
+**Score:** 8.50
+```
+
+---
+
+### cortex_global_stats
+
+Get statistics from the global memory index.
+
+**Parameters:** None
+
+**Example:**
+
+```
+cortex_global_stats()
+```
+
+**Response:**
+```markdown
+# Global Index Statistics
+
+**Total Memories:** 142
+
+## By Project
+- D:\Projects\my-api: 45
+- D:\Projects\my-frontend: 38
+- D:\Projects\shared-lib: 59
+
+## By Type
+- solution: 42
+- troubleshooting: 35
+- concept: 28
+```
+
+---
+
+### cortex_sync_to_global
+
+Manually sync project memories to the global index.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| full_sync | bool | No | Set to true to sync all project memories (default: false) |
+
+**Example:**
+
+```
+cortex_sync_to_global({
+  full_sync: true
+})
+```
+
+**Response:**
+```
+Synced 42 memories to global index.
+```
+
+**Note:** Memories are automatically synced on create/update when `global_sync_enabled: true` in config.
+
+---
+
 ### cortex_export
 
 Export memories and activities to various formats.

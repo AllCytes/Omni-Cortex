@@ -6,7 +6,7 @@ A universal memory system for Claude Code that combines activity logging with in
 
 - **Zero Configuration**: Works out of the box - just install and run setup
 - **Dual-Layer Storage**: Activity logging (audit trail) + Knowledge store (memories)
-- **15 MCP Tools**: Full-featured API for memory management, activity tracking, and session continuity
+- **18 MCP Tools**: Full-featured API for memory management, activity tracking, session continuity, and cross-project search
 - **Semantic Search**: AI-powered search using sentence-transformers (optional)
 - **Hybrid Search**: Combines keyword (FTS5) + semantic search for best results
 - **Full-Text Search**: SQLite FTS5-powered keyword search with smart ranking
@@ -125,6 +125,14 @@ pip uninstall omni-cortex
 | `cortex_list_tags` | List all tags with usage counts |
 | `cortex_review_memories` | Review and update memory freshness |
 | `cortex_export` | Export data to markdown or JSON |
+
+### Global Tools (3)
+
+| Tool | Description |
+|------|-------------|
+| `cortex_global_search` | Search memories across all projects |
+| `cortex_global_stats` | Get global index statistics |
+| `cortex_sync_to_global` | Manually sync to global index |
 
 ## Memory Types
 

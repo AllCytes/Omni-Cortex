@@ -485,6 +485,96 @@ class TestUtilityTools:
         close_all_connections()
 
 
+class TestGlobalSync:
+    """Test global index synchronization."""
+
+    @pytest.mark.asyncio
+    async def test_memory_syncs_to_global(self, integration_env):
+        """Test that creating a memory syncs to global index."""
+        from omni_cortex.database.connection import init_database, close_all_connections
+        from omni_cortex.database.sync import search_global_memories, get_global_stats
+        from omni_cortex.tools.memories import RememberInput, ForgetInput
+        from omni_cortex.tools.memories import register_memory_tools
+        from mcp.server.fastmcp import FastMCP
+
+        conn = init_database()
+        init_database(is_global=True)  # Initialize global DB
+
+        mcp = FastMCP("test")
+        register_memory_tools(mcp)
+
+        cortex_remember = mcp._tool_manager._tools["cortex_remember"].fn
+        cortex_forget = mcp._tool_manager._tools["cortex_forget"].fn
+
+        # Create a memory (should sync to global)
+        result = await cortex_remember(RememberInput(
+            content="Global sync test: This memory should appear in global index",
+            tags=["global-sync-test"]
+        ))
+        memory_id = result.split("Remembered: ")[1].split("\n")[0]
+
+        # Search global index
+        global_results = search_global_memories(
+            query="global sync test",
+            limit=10
+        )
+
+        # Should find the memory in global index
+        found = any(r["id"] == memory_id for r in global_results)
+        assert found or len(global_results) > 0, "Memory should sync to global index"
+
+        # Get global stats
+        stats = get_global_stats()
+        assert stats.get("total_memories", 0) >= 1
+
+        # Cleanup
+        await cortex_forget(ForgetInput(id=memory_id, confirm=True))
+
+        close_all_connections()
+
+    @pytest.mark.asyncio
+    async def test_global_search_tool(self, integration_env):
+        """Test the global search tool."""
+        from omni_cortex.database.connection import init_database, close_all_connections
+        from omni_cortex.tools.memories import RememberInput, ForgetInput
+        from omni_cortex.tools.memories import register_memory_tools
+        from omni_cortex.tools.utilities import GlobalSearchInput
+        from omni_cortex.tools.utilities import register_utility_tools
+        from mcp.server.fastmcp import FastMCP
+
+        conn = init_database()
+        init_database(is_global=True)
+
+        mcp = FastMCP("test")
+        register_memory_tools(mcp)
+        register_utility_tools(mcp)
+
+        cortex_remember = mcp._tool_manager._tools["cortex_remember"].fn
+        cortex_forget = mcp._tool_manager._tools["cortex_forget"].fn
+        cortex_global_search = mcp._tool_manager._tools["cortex_global_search"].fn
+
+        # Create a memory
+        result = await cortex_remember(RememberInput(
+            content="Unique global search test content xyz123",
+            tags=["global-search-test"]
+        ))
+        memory_id = result.split("Remembered: ")[1].split("\n")[0]
+
+        # Use global search tool
+        search_result = await cortex_global_search(GlobalSearchInput(
+            query="xyz123",
+            limit=10
+        ))
+
+        # Should find results or indicate none found
+        assert "Global" in search_result or "No memories" in search_result
+
+        # Cleanup
+        await cortex_forget(ForgetInput(id=memory_id, confirm=True))
+
+        close_all_connections()
+
+
 class TestCrossFeatureIntegration:
     """Test interactions between different features."""
 

@@ -25,6 +25,7 @@ from ..search.ranking import calculate_relevance_score
 from ..utils.formatting import format_memory_markdown, format_memories_list_markdown
 from ..embeddings import generate_and_store_embedding, is_model_available
 from ..config import load_config
+from ..database.sync import sync_memory_to_global, delete_memory_from_global
 
 
 # === Input Models ===
@@ -201,6 +202,20 @@ def register_memory_tools(mcp: FastMCP) -> None:
                     # Log timeout errors to help with debugging
                     import logging
                     logging.getLogger(__name__).warning(f"Embedding generation failed: {e}")
+
+            # Sync to global index for cross-project search
+            sync_memory_to_global(
+                memory_id=memory.id,
+                content=memory.content,
+                memory_type=memory.type,
+                tags=memory.tags or [],
+                context=memory.context,
+                importance_score=memory.importance_score,
+                status=memory.status,
+                project_path=project_path,
+                created_at=memory.created_at,
+                updated_at=memory.updated_at,
+            )
 
             embedding_status = "with embedding" if has_embedding else "no embedding"
             return (
@@ -402,6 +417,20 @@ def register_memory_tools(mcp: FastMCP) -> None:
                 except Exception:
                     pass  # Non-fatal
 
+            # Sync update to global index
+            sync_memory_to_global(
+                memory_id=updated.id,
+                content=updated.content,
+                memory_type=updated.type,
+                tags=updated.tags or [],
+                context=updated.context,
+                importance_score=updated.importance_score,
+                status=updated.status,
+                project_path=updated.project_path or str(get_project_path()),
+                created_at=updated.created_at,
+                updated_at=updated.updated_at,
+            )
+
             return format_memory_markdown(updated.model_dump())
 
         except Exception as e:
@@ -434,6 +463,8 @@ def register_memory_tools(mcp: FastMCP) -> None:
             deleted = delete_memory(conn, params.id)
 
             if deleted:
+                # Also remove from global index
+                delete_memory_from_global(params.id)
                 return f"Memory deleted: {params.id}"
             else:
                 return f"Memory not found: {params.id}"

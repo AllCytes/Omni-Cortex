@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from mcp.server.fastmcp import FastMCP
 
 from ..database.connection import init_database
+from ..database.sync import search_global_memories, get_global_stats, sync_all_project_memories
 from ..models.memory import list_memories, update_memory, MemoryUpdate
 from ..utils.timestamps import now_iso
 
@@ -45,6 +46,26 @@ class ExportInput(BaseModel):
     include_memories: bool = Field(True, description="Include memories")
     since: Optional[str] = Field(None, description="Export data since this date (ISO 8601)")
     output_path: Optional[str] = Field(None, description="File path to save export")
+
+
+class GlobalSearchInput(BaseModel):
+    """Input for global cross-project search."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True)
+
+    query: str = Field(..., description="Search query", min_length=1)
+    type_filter: Optional[str] = Field(None, description="Filter by memory type")
+    tags_filter: Optional[list[str]] = Field(None, description="Filter by tags")
+    project_filter: Optional[str] = Field(None, description="Filter by project path (substring match)")
+    limit: int = Field(20, description="Maximum results", ge=1, le=100)
+
+
+class GlobalSyncInput(BaseModel):
+    """Input for syncing to global index."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True)
+
+    full_sync: bool = Field(False, description="Sync all project memories to global index")
 
 
 VALID_ACTIONS = ["list", "mark_fresh", "mark_outdated", "mark_archived"]
@@ -285,3 +306,143 @@ def register_utility_tools(mcp: FastMCP) -> None:
 
         except Exception as e:
             return f"Error exporting data: {e}"
+
+    @mcp.tool(
+        name="cortex_global_search",
+        annotations={
+            "title": "Search Global Index",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+    )
+    async def cortex_global_search(params: GlobalSearchInput) -> str:
+        """Search memories across all projects via global index.
+
+        This tool searches the global index at ~/.omni-cortex/global.db
+        which contains memories from all projects that have global_sync_enabled.
+
+        Args:
+            params: GlobalSearchInput with query and filters
+
+        Returns:
+            Matching memories from all projects
+        """
+        try:
+            results = search_global_memories(
+                query=params.query,
+                type_filter=params.type_filter,
+                tags_filter=params.tags_filter,
+                project_filter=params.project_filter,
+                limit=params.limit,
+            )
+
+            if not results:
+                return f"No memories found in global index for: {params.query}"
+
+            lines = [f"# Global Search Results ({len(results)})", ""]
+
+            # Group by project
+            by_project: dict[str, list] = {}
+            for mem in results:
+                project = mem.get("project_path", "unknown")
+                if project not in by_project:
+                    by_project[project] = []
+                by_project[project].append(mem)
+
+            for project, memories in by_project.items():
+                lines.append(f"## Project: {project}")
+                lines.append("")
+
+                for mem in memories:
+                    lines.append(f"### [{mem['type']}] {mem['id']}")
+                    lines.append(f"{mem['content'][:200]}...")
+                    if mem.get("tags"):
+                        lines.append(f"**Tags:** {', '.join(mem['tags'])}")
+                    lines.append(f"**Score:** {mem.get('score', 0):.2f}")
+                    lines.append("")
+
+            return "\n".join(lines)
+
+        except Exception as e:
+            return f"Error searching global index: {e}"
+
+    @mcp.tool(
+        name="cortex_global_stats",
+        annotations={
+            "title": "Global Index Stats",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+    )
+    async def cortex_global_stats() -> str:
+        """Get statistics from the global memory index.
+
+        Shows total memories, breakdown by project and type.
+
+        Returns:
+            Statistics about the global index
+        """
+        try:
+            stats = get_global_stats()
+
+            if "error" in stats:
+                return f"Error: {stats['error']}"
+
+            lines = [
+                "# Global Index Statistics",
+                "",
+                f"**Total Memories:** {stats.get('total_memories', 0)}",
+                "",
+            ]
+
+            if stats.get("by_project"):
+                lines.append("## By Project")
+                for project, count in stats["by_project"].items():
+                    lines.append(f"- {project}: {count}")
+                lines.append("")
+
+            if stats.get("by_type"):
+                lines.append("## By Type")
+                for mem_type, count in stats["by_type"].items():
+                    lines.append(f"- {mem_type}: {count}")
+
+            return "\n".join(lines)
+
+        except Exception as e:
+            return f"Error getting global stats: {e}"
+
+    @mcp.tool(
+        name="cortex_sync_to_global",
+        annotations={
+            "title": "Sync to Global Index",
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
+    )
+    async def cortex_sync_to_global(params: GlobalSyncInput) -> str:
+        """Sync project memories to the global index.
+
+        This manually triggers a sync of all project memories to the
+        global index. Normally this happens automatically on create/update.
+
+        Args:
+            params: GlobalSyncInput with sync options
+
+        Returns:
+            Number of memories synced
+        """
+        try:
+            if params.full_sync:
+                count = sync_all_project_memories()
+                return f"Synced {count} memories to global index."
+            else:
+                return "Set full_sync=true to sync all project memories to global index."
+
+        except Exception as e:
+            return f"Error syncing to global: {e}"

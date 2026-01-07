@@ -83,7 +83,7 @@ omni-cortex-setup
 - [ ] API Fallback (`embeddings/api_fallback.py` for Claude/OpenAI)
 
 ### Phase 5: Global Index & Polish
-- [ ] Global index sync across projects
+- [x] Global index sync across projects (database/sync.py + 3 new tools)
 - [ ] SQLite dump export format
 
 ### Phase 6: Testing & Documentation
@@ -160,13 +160,12 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.0.3 - 57 tests passing (incl. integration), all 15 tools working, security reviewed, fully documented.
+Status: v1.0.4 - 59 tests passing, 18 tools (incl. 3 global sync tools), security reviewed, fully documented.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
 
 Remaining tasks:
-1. Global index sync across projects
-2. SQLite dump export format
-3. Performance profiling
+1. SQLite dump export format
+2. Performance profiling
 ```
 
 ---
