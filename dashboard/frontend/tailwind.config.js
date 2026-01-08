@@ -5,6 +5,20 @@ export default {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   darkMode: 'class',
+  safelist: [
+    // Memory type background colors
+    'bg-type-decision', 'bg-type-solution', 'bg-type-insight', 'bg-type-error',
+    'bg-type-context', 'bg-type-preference', 'bg-type-todo', 'bg-type-reference',
+    'bg-type-workflow', 'bg-type-api', 'bg-type-other',
+    // Memory type text colors
+    'text-type-decision', 'text-type-solution', 'text-type-insight', 'text-type-error',
+    'text-type-context', 'text-type-preference', 'text-type-todo', 'text-type-reference',
+    'text-type-workflow', 'text-type-api', 'text-type-other',
+    // Memory type border colors (left border)
+    'border-l-type-decision', 'border-l-type-solution', 'border-l-type-insight', 'border-l-type-error',
+    'border-l-type-context', 'border-l-type-preference', 'border-l-type-todo', 'border-l-type-reference',
+    'border-l-type-workflow', 'border-l-type-api', 'border-l-type-other',
+  ],
   theme: {
     extend: {
       colors: {
@@ -23,5 +37,7 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }

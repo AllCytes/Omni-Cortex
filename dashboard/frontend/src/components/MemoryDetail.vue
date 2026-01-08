@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { Memory } from '@/types'
+import type { Memory, MemoryUpdate } from '@/types'
 import { TYPE_COLORS } from '@/types'
-import { X, Copy, Check, Download, FileJson, FileText } from 'lucide-vue-next'
+import { useDashboardStore } from '@/stores/dashboardStore'
+import { X, Copy, Check, Download, FileJson, FileText, Pencil, Trash2, Loader2 } from 'lucide-vue-next'
 import { exportToJson, exportToMarkdown, exportSingleMemoryToMarkdown, copyToClipboard } from '@/services/export'
+import MemoryEditModal from './MemoryEditModal.vue'
 
 const props = defineProps<{
   memory: Memory
@@ -12,6 +14,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
+
+const store = useDashboardStore()
+const isEditModalOpen = ref(false)
+const isDeleting = ref(false)
+const showDeleteConfirm = ref(false)
 
 const copied = ref(false)
 const copiedMarkdown = ref(false)
@@ -52,6 +59,37 @@ function downloadJson() {
 function downloadMarkdown() {
   exportToMarkdown([props.memory], `memory-${props.memory.id}.md`)
 }
+
+function openEditModal() {
+  isEditModalOpen.value = true
+}
+
+async function handleSaveEdit(updates: MemoryUpdate) {
+  const result = await store.updateMemory(props.memory.id, updates)
+  if (result) {
+    isEditModalOpen.value = false
+  }
+}
+
+async function handleDelete() {
+  if (!showDeleteConfirm.value) {
+    showDeleteConfirm.value = true
+    return
+  }
+
+  isDeleting.value = true
+  const success = await store.deleteMemoryById(props.memory.id)
+  isDeleting.value = false
+
+  if (success) {
+    emit('close')
+  }
+  showDeleteConfirm.value = false
+}
+
+function cancelDelete() {
+  showDeleteConfirm.value = false
+}
 </script>
 
 <template>
@@ -74,12 +112,50 @@ function downloadMarkdown() {
           {{ memory.status.replace('_', ' ') }}
         </span>
       </div>
-      <button
-        @click="emit('close')"
-        class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-      >
-        <X class="w-5 h-5" />
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Edit Button -->
+        <button
+          @click="openEditModal"
+          class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-blue-600 dark:text-blue-400"
+          title="Edit memory"
+        >
+          <Pencil class="w-4 h-4" />
+        </button>
+        <!-- Delete Button -->
+        <button
+          v-if="!showDeleteConfirm"
+          @click="handleDelete"
+          class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-red-600 dark:text-red-400"
+          title="Delete memory"
+        >
+          <Trash2 class="w-4 h-4" />
+        </button>
+        <!-- Delete Confirmation -->
+        <div v-else class="flex items-center gap-1">
+          <button
+            @click="handleDelete"
+            :disabled="isDeleting"
+            class="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            <Loader2 v-if="isDeleting" class="w-3 h-3 animate-spin" />
+            <span v-else>Confirm</span>
+          </button>
+          <button
+            @click="cancelDelete"
+            :disabled="isDeleting"
+            class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+        <!-- Close Button -->
+        <button
+          @click="emit('close')"
+          class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+        >
+          <X class="w-5 h-5" />
+        </button>
+      </div>
     </div>
 
     <!-- Content -->
@@ -195,4 +271,12 @@ function downloadMarkdown() {
       </div>
     </div>
   </div>
+
+  <!-- Edit Modal -->
+  <MemoryEditModal
+    :memory="memory"
+    :is-open="isEditModalOpen"
+    @close="isEditModalOpen = false"
+    @save="handleSaveEdit"
+  />
 </template>

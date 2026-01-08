@@ -1,4 +1,5 @@
 """FastAPI backend for Omni-Cortex Web Dashboard."""
+# Trigger reload for model changes
 
 import asyncio
 from contextlib import asynccontextmanager
@@ -12,6 +13,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from database import (
+    delete_memory,
     get_activities,
     get_all_tags,
     get_memories,
@@ -21,10 +23,12 @@ from database import (
     get_timeline,
     get_type_distribution,
     search_memories,
+    update_memory,
 )
-from models import FilterParams, ProjectInfo
+from models import ChatRequest, ChatResponse, FilterParams, MemoryUpdate, ProjectInfo
 from project_scanner import scan_projects
 from websocket_manager import manager
+import chat_service
 
 
 class DatabaseChangeHandler(FileSystemEventHandler):
@@ -160,6 +164,43 @@ async def get_memory(
     return memory
 
 
+@app.put("/api/memories/{memory_id}")
+async def update_memory_endpoint(
+    memory_id: str,
+    updates: MemoryUpdate,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Update a memory."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    updated = update_memory(project, memory_id, updates)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    # Notify connected clients
+    await manager.broadcast("memory_updated", updated.model_dump(by_alias=True))
+    return updated
+
+
+@app.delete("/api/memories/{memory_id}")
+async def delete_memory_endpoint(
+    memory_id: str,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Delete a memory."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    deleted = delete_memory(project, memory_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    # Notify connected clients
+    await manager.broadcast("memory_deleted", {"id": memory_id})
+    return {"message": "Memory deleted", "id": memory_id}
+
+
 @app.get("/api/memories/stats/summary")
 async def memory_stats(
     project: str = Query(..., description="Path to the database file"),
@@ -245,6 +286,36 @@ async def list_sessions(
         raise HTTPException(status_code=404, detail="Database not found")
 
     return get_sessions(project, limit)
+
+
+# --- Chat Endpoint ---
+
+
+@app.get("/api/chat/status")
+async def chat_status():
+    """Check if chat service is available."""
+    return {
+        "available": chat_service.is_available(),
+        "message": "Chat is available" if chat_service.is_available() else "Set GEMINI_API_KEY environment variable to enable chat",
+    }
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_with_memories(
+    request: ChatRequest,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Ask a natural language question about memories."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    result = await chat_service.ask_about_memories(
+        project,
+        request.question,
+        request.max_memories,
+    )
+
+    return ChatResponse(**result)
 
 
 # --- WebSocket Endpoint ---

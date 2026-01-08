@@ -9,13 +9,14 @@ import MemoryBrowser from '@/components/MemoryBrowser.vue'
 import MemoryDetail from '@/components/MemoryDetail.vue'
 import StatsPanel from '@/components/StatsPanel.vue'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
+import ChatPanel from '@/components/ChatPanel.vue'
 
 const store = useDashboardStore()
 const { connect } = useWebSocket()
 useKeyboardShortcuts()
 
 const showFilters = ref(true)
-const activeTab = ref<'memories' | 'activity' | 'stats'>('memories')
+const activeTab = ref<'memories' | 'activity' | 'stats' | 'chat'>('memories')
 
 onMounted(async () => {
   await store.loadProjects()
@@ -24,6 +25,11 @@ onMounted(async () => {
 
 function toggleFilters() {
   showFilters.value = !showFilters.value
+}
+
+function handleNavigateToMemory(memoryId: string) {
+  // Switch to memories tab when navigating from chat
+  activeTab.value = 'memories'
 }
 </script>
 
@@ -67,6 +73,17 @@ function toggleFilters() {
         >
           Statistics
         </button>
+        <button
+          @click="activeTab = 'chat'"
+          :class="[
+            'px-4 py-2 rounded-lg font-medium transition-colors',
+            activeTab === 'chat'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+          ]"
+        >
+          Ask AI
+        </button>
       </div>
 
       <!-- Memories Tab -->
@@ -101,6 +118,11 @@ function toggleFilters() {
       <!-- Stats Tab -->
       <div v-else-if="activeTab === 'stats'">
         <StatsPanel />
+      </div>
+
+      <!-- Chat Tab -->
+      <div v-else-if="activeTab === 'chat'" class="max-w-4xl mx-auto h-[calc(100vh-200px)]">
+        <ChatPanel @navigate-to-memory="handleNavigateToMemory" />
       </div>
     </main>
   </div>

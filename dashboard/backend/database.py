@@ -7,12 +7,19 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from models import Activity, FilterParams, Memory, MemoryStats, Session, TimelineEntry
+from models import Activity, FilterParams, Memory, MemoryStats, MemoryUpdate, Session, TimelineEntry
 
 
 def get_connection(db_path: str) -> sqlite3.Connection:
     """Get a read-only connection to the database."""
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def get_write_connection(db_path: str) -> sqlite3.Connection:
+    """Get a writable connection to the database."""
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -197,6 +204,14 @@ def get_activities(
     activities = []
 
     for row in cursor.fetchall():
+        # Parse timestamp - handle both with and without timezone
+        ts_str = row["timestamp"]
+        try:
+            ts = datetime.fromisoformat(ts_str)
+        except ValueError:
+            # Fallback for edge cases
+            ts = datetime.now()
+
         activities.append(
             Activity(
                 id=row["id"],
@@ -209,7 +224,7 @@ def get_activities(
                 error_message=row["error_message"],
                 duration_ms=row["duration_ms"],
                 file_path=row["file_path"],
-                timestamp=datetime.fromisoformat(row["timestamp"]),
+                timestamp=ts,
             )
         )
 
@@ -347,17 +362,32 @@ def search_memories(db_path: str, query: str, limit: int = 20) -> list[Memory]:
     ).fetchone()
 
     if fts_check:
-        # Use FTS search
-        cursor = conn.execute(
-            """
-            SELECT m.* FROM memories m
-            JOIN memories_fts fts ON m.id = fts.id
-            WHERE memories_fts MATCH ?
-            ORDER BY rank
-            LIMIT ?
-            """,
-            (query, limit),
-        )
+        # Use FTS search - FTS5 uses rowid to match the memories table rowid
+        # Escape special FTS5 characters and wrap in quotes for phrase search
+        safe_query = query.replace('"', '""')
+        try:
+            cursor = conn.execute(
+                """
+                SELECT m.* FROM memories m
+                JOIN memories_fts fts ON m.rowid = fts.rowid
+                WHERE memories_fts MATCH ?
+                ORDER BY rank
+                LIMIT ?
+                """,
+                (f'"{safe_query}"', limit),
+            )
+        except sqlite3.OperationalError:
+            # Fallback if FTS query fails
+            search_term = f"%{query}%"
+            cursor = conn.execute(
+                """
+                SELECT * FROM memories
+                WHERE content LIKE ? OR context LIKE ?
+                ORDER BY importance_score DESC
+                LIMIT ?
+                """,
+                (search_term, search_term, limit),
+            )
     else:
         # Fallback to LIKE
         search_term = f"%{query}%"
@@ -393,3 +423,76 @@ def search_memories(db_path: str, query: str, limit: int = 20) -> list[Memory]:
 
     conn.close()
     return memories
+
+
+def update_memory(db_path: str, memory_id: str, updates: MemoryUpdate) -> Optional[Memory]:
+    """Update a memory and return the updated record."""
+    conn = get_write_connection(db_path)
+
+    # Build update query dynamically based on provided fields
+    update_fields = []
+    params = []
+
+    if updates.content is not None:
+        update_fields.append("content = ?")
+        params.append(updates.content)
+
+    if updates.context is not None:
+        update_fields.append("context = ?")
+        params.append(updates.context)
+
+    if updates.memory_type is not None:
+        update_fields.append("type = ?")
+        params.append(updates.memory_type)
+
+    if updates.status is not None:
+        update_fields.append("status = ?")
+        params.append(updates.status)
+
+    if updates.importance_score is not None:
+        update_fields.append("importance_score = ?")
+        params.append(updates.importance_score)
+
+    if updates.tags is not None:
+        update_fields.append("tags = ?")
+        params.append(json.dumps(updates.tags))
+
+    if not update_fields:
+        conn.close()
+        return get_memory_by_id(db_path, memory_id)
+
+    # Add updated timestamp
+    update_fields.append("last_accessed = ?")
+    params.append(datetime.now().isoformat())
+
+    # Add memory_id to params
+    params.append(memory_id)
+
+    query = f"UPDATE memories SET {', '.join(update_fields)} WHERE id = ?"
+    cursor = conn.execute(query, params)
+    conn.commit()
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return None
+
+    conn.close()
+    return get_memory_by_id(db_path, memory_id)
+
+
+def delete_memory(db_path: str, memory_id: str) -> bool:
+    """Delete a memory by ID. Returns True if deleted, False if not found."""
+    conn = get_write_connection(db_path)
+
+    # Also delete related entries in memory_relationships
+    conn.execute(
+        "DELETE FROM memory_relationships WHERE source_id = ? OR target_id = ?",
+        (memory_id, memory_id),
+    )
+
+    cursor = conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+    conn.commit()
+
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted

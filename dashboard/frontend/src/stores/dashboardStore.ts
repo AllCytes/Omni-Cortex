@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Project, Memory, MemoryStats, FilterState, Activity, TimelineEntry } from '@/types'
+import type { Project, Memory, MemoryStats, MemoryUpdate, FilterState, Activity, TimelineEntry } from '@/types'
 import * as api from '@/services/api'
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -196,6 +196,34 @@ export const useDashboardStore = defineStore('dashboard', () => {
     applyFilters({ search: query })
   }
 
+  async function updateMemory(memoryId: string, updates: MemoryUpdate): Promise<Memory | null> {
+    if (!currentDbPath.value) return null
+
+    try {
+      const updated = await api.updateMemory(currentDbPath.value, memoryId, updates)
+      handleMemoryUpdated(updated)
+      return updated
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update memory'
+      console.error('Failed to update memory:', e)
+      return null
+    }
+  }
+
+  async function deleteMemoryById(memoryId: string): Promise<boolean> {
+    if (!currentDbPath.value) return false
+
+    try {
+      await api.deleteMemory(currentDbPath.value, memoryId)
+      handleMemoryDeleted(memoryId)
+      return true
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to delete memory'
+      console.error('Failed to delete memory:', e)
+      return false
+    }
+  }
+
   // WebSocket event handlers
   function handleMemoryCreated(memory: Memory) {
     memories.value = [memory, ...memories.value]
@@ -270,6 +298,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     applyFilters,
     resetFilters,
     search,
+    updateMemory,
+    deleteMemoryById,
 
     // WebSocket handlers
     handleMemoryCreated,

@@ -23,7 +23,7 @@ class Memory(BaseModel):
     id: str
     content: str
     context: Optional[str] = None
-    memory_type: str = Field(alias="type")
+    memory_type: str = Field(default="other", validation_alias="type")
     status: str = "fresh"
     importance_score: int = 50
     access_count: int = 0
@@ -31,8 +31,7 @@ class Memory(BaseModel):
     last_accessed: Optional[datetime] = None
     tags: list[str] = []
 
-    class Config:
-        populate_by_name = True
+    model_config = {"populate_by_name": True}
 
 
 class MemoryStats(BaseModel):
@@ -49,7 +48,7 @@ class MemoryStats(BaseModel):
 class Activity(BaseModel):
     """Activity log record."""
 
-    id: int
+    id: str
     session_id: Optional[str] = None
     event_type: str
     tool_name: Optional[str] = None
@@ -96,9 +95,46 @@ class FilterParams(BaseModel):
     offset: int = 0
 
 
+class MemoryUpdate(BaseModel):
+    """Update request for a memory."""
+
+    content: Optional[str] = None
+    context: Optional[str] = None
+    memory_type: Optional[str] = Field(None, validation_alias="type")
+    status: Optional[str] = None
+    importance_score: Optional[int] = Field(None, ge=1, le=100)
+    tags: Optional[list[str]] = None
+
+    model_config = {"populate_by_name": True}
+
+
 class WSEvent(BaseModel):
     """WebSocket event message."""
 
     event_type: str
     data: dict
     timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class ChatRequest(BaseModel):
+    """Request for the chat endpoint."""
+
+    question: str = Field(..., min_length=1, max_length=2000)
+    max_memories: int = Field(default=10, ge=1, le=50)
+
+
+class ChatSource(BaseModel):
+    """Source memory reference in chat response."""
+
+    id: str
+    type: str
+    content_preview: str
+    tags: list[str]
+
+
+class ChatResponse(BaseModel):
+    """Response from the chat endpoint."""
+
+    answer: str
+    sources: list[ChatSource]
+    error: Optional[str] = None

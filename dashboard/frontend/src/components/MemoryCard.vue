@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Memory } from '@/types'
-import { TYPE_COLORS, TYPE_TEXT_COLORS } from '@/types'
+import { TYPE_COLORS, TYPE_TEXT_COLORS, TYPE_BORDER_COLORS } from '@/types'
+import { truncateWithHighlight } from '@/utils/highlight'
 import { Clock, Eye, Tag } from 'lucide-vue-next'
 
 const props = defineProps<{
   memory: Memory
   selected?: boolean
+  searchTerm?: string
 }>()
 
 const typeColor = computed(() => TYPE_COLORS[props.memory.memory_type] || 'bg-gray-500')
 const typeTextColor = computed(() => TYPE_TEXT_COLORS[props.memory.memory_type] || 'text-gray-500')
+const borderColor = computed(() => TYPE_BORDER_COLORS[props.memory.memory_type] || 'border-l-gray-500')
 
 const contentPreview = computed(() => {
-  const content = props.memory.content
-  if (content.length <= 200) return content
-  return content.substring(0, 200) + '...'
+  return truncateWithHighlight(props.memory.content, props.searchTerm || '', 200)
 })
 
 function formatDate(dateStr: string | null): string {
@@ -38,10 +39,11 @@ function formatDate(dateStr: string | null): string {
 <template>
   <div
     :class="[
-      'p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md',
+      'p-4 rounded-lg cursor-pointer transition-all hover:shadow-md border-l-4',
+      borderColor,
       selected
-        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+        ? 'border-r border-t border-b border-r-blue-500 border-t-blue-500 border-b-blue-500 bg-blue-50 dark:bg-blue-900/20'
+        : 'border-r border-t border-b border-r-gray-200 border-t-gray-200 border-b-gray-200 dark:border-r-gray-700 dark:border-t-gray-700 dark:border-b-gray-700 bg-white dark:bg-gray-800 hover:border-r-gray-300 hover:border-t-gray-300 hover:border-b-gray-300 dark:hover:border-r-gray-600 dark:hover:border-t-gray-600 dark:hover:border-b-gray-600'
     ]"
   >
     <!-- Header -->
@@ -78,9 +80,10 @@ function formatDate(dateStr: string | null): string {
     </div>
 
     <!-- Content Preview -->
-    <p class="text-sm text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap break-words">
-      {{ contentPreview }}
-    </p>
+    <p
+      class="text-sm text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap break-words"
+      v-html="contentPreview"
+    ></p>
 
     <!-- Tags -->
     <div v-if="memory.tags.length > 0" class="flex flex-wrap gap-1 mb-3">

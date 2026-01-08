@@ -55,6 +55,7 @@ function handleScroll() {
         :key="memory.id"
         :memory="memory"
         :selected="store.selectedMemory?.id === memory.id"
+        :search-term="store.filters.search"
         @click="store.selectMemory(memory)"
       />
 

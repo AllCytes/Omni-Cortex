@@ -31,9 +31,18 @@ export interface MemoryStats {
   tags: Array<{ name: string; count: number }>
 }
 
+export interface MemoryUpdate {
+  content?: string
+  context?: string
+  type?: string
+  status?: string
+  importance_score?: number
+  tags?: string[]
+}
+
 // Activity types
 export interface Activity {
-  id: number
+  id: string
   session_id: string | null
   event_type: string
   tool_name: string | null
@@ -136,4 +145,18 @@ export const TYPE_TEXT_COLORS: Record<string, string> = {
   workflow: 'text-type-workflow',
   api: 'text-type-api',
   other: 'text-type-other',
+}
+
+export const TYPE_BORDER_COLORS: Record<string, string> = {
+  decision: 'border-l-type-decision',
+  solution: 'border-l-type-solution',
+  insight: 'border-l-type-insight',
+  error: 'border-l-type-error',
+  context: 'border-l-type-context',
+  preference: 'border-l-type-preference',
+  todo: 'border-l-type-todo',
+  reference: 'border-l-type-reference',
+  workflow: 'border-l-type-workflow',
+  api: 'border-l-type-api',
+  other: 'border-l-type-other',
 }
