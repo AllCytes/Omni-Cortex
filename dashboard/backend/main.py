@@ -1,5 +1,5 @@
 """FastAPI backend for Omni-Cortex Web Dashboard."""
-# Trigger reload for Phase 2-3 routes
+# Trigger reload for relationship graph column fix
 
 import asyncio
 from contextlib import asynccontextmanager
@@ -155,6 +155,42 @@ async def list_memories(
     )
 
     return get_memories(project, filters)
+
+
+# NOTE: These routes MUST be defined before /api/memories/{memory_id} to avoid path conflicts
+@app.get("/api/memories/needs-review")
+async def get_memories_needing_review_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    days_threshold: int = 30,
+    limit: int = 50,
+):
+    """Get memories that may need freshness review."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_memories_needing_review(project, days_threshold, limit)
+
+
+@app.post("/api/memories/bulk-update-status")
+async def bulk_update_status_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    memory_ids: list[str] = [],
+    status: str = "fresh",
+):
+    """Update status for multiple memories at once."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    valid_statuses = ["fresh", "needs_review", "outdated", "archived"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+
+    count = bulk_update_memory_status(project, memory_ids, status)
+
+    # Notify connected clients
+    await manager.broadcast("memories_bulk_updated", {"count": count, "status": status})
+
+    return {"updated_count": count, "status": status}
 
 
 @app.get("/api/memories/{memory_id}")
@@ -348,44 +384,6 @@ async def get_recent_sessions_endpoint(
         raise HTTPException(status_code=404, detail="Database not found")
 
     return get_recent_sessions(project, limit)
-
-
-# --- Freshness Review Endpoints ---
-
-
-@app.get("/api/memories/needs-review")
-async def get_memories_needing_review_endpoint(
-    project: str = Query(..., description="Path to the database file"),
-    days_threshold: int = 30,
-    limit: int = 50,
-):
-    """Get memories that may need freshness review."""
-    if not Path(project).exists():
-        raise HTTPException(status_code=404, detail="Database not found")
-
-    return get_memories_needing_review(project, days_threshold, limit)
-
-
-@app.post("/api/memories/bulk-update-status")
-async def bulk_update_status_endpoint(
-    project: str = Query(..., description="Path to the database file"),
-    memory_ids: list[str] = [],
-    status: str = "fresh",
-):
-    """Update status for multiple memories at once."""
-    if not Path(project).exists():
-        raise HTTPException(status_code=404, detail="Database not found")
-
-    valid_statuses = ["fresh", "needs_review", "outdated", "archived"]
-    if status not in valid_statuses:
-        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
-
-    count = bulk_update_memory_status(project, memory_ids, status)
-
-    # Notify connected clients
-    await manager.broadcast("memories_bulk_updated", {"count": count, "status": status})
-
-    return {"updated_count": count, "status": status}
 
 
 # --- Relationship Graph Endpoints ---

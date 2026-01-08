@@ -666,8 +666,8 @@ def get_relationships(db_path: str, memory_id: Optional[str] = None) -> list[dic
 
     query = """
         SELECT
-            r.source_id,
-            r.target_id,
+            r.source_memory_id as source_id,
+            r.target_memory_id as target_id,
             r.relationship_type,
             r.strength,
             ms.content as source_content,
@@ -675,13 +675,13 @@ def get_relationships(db_path: str, memory_id: Optional[str] = None) -> list[dic
             mt.content as target_content,
             mt.type as target_type
         FROM memory_relationships r
-        JOIN memories ms ON r.source_id = ms.id
-        JOIN memories mt ON r.target_id = mt.id
+        JOIN memories ms ON r.source_memory_id = ms.id
+        JOIN memories mt ON r.target_memory_id = mt.id
     """
 
     try:
         if memory_id:
-            query += " WHERE r.source_id = ? OR r.target_id = ?"
+            query += " WHERE r.source_memory_id = ? OR r.target_memory_id = ?"
             cursor = conn.execute(query, (memory_id, memory_id))
         else:
             cursor = conn.execute(query)
