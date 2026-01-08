@@ -11,6 +11,8 @@ from typing import Optional
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -114,6 +116,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Static files for production build
+DASHBOARD_DIR = Path(__file__).parent.parent
+DIST_DIR = DASHBOARD_DIR / "frontend" / "dist"
+
+
+def setup_static_files():
+    """Mount static files if dist directory exists (production build)."""
+    if DIST_DIR.exists():
+        # Mount assets directory
+        assets_dir = DIST_DIR / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+            print(f"[Static] Serving assets from: {assets_dir}")
+
+
+# Call setup at module load
+setup_static_files()
 
 
 # --- REST Endpoints ---
@@ -591,6 +611,39 @@ async def health_check():
         "status": "healthy",
         "websocket_connections": manager.connection_count,
     }
+
+
+# --- Static File Serving (SPA) ---
+# These routes must come AFTER all API routes
+
+
+@app.get("/")
+async def serve_root():
+    """Serve the frontend index.html."""
+    index_file = DIST_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return {"message": "Omni-Cortex Dashboard API", "docs": "/docs"}
+
+
+@app.get("/{path:path}")
+async def serve_spa(path: str):
+    """Catch-all route to serve SPA for client-side routing."""
+    # Skip API routes and known paths
+    if path.startswith(("api/", "ws", "health", "docs", "openapi", "redoc")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Check if it's a static file
+    file_path = DIST_DIR / path
+    if file_path.exists() and file_path.is_file():
+        return FileResponse(str(file_path))
+
+    # Otherwise serve index.html for SPA routing
+    index_file = DIST_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 def run():

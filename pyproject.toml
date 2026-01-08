@@ -54,6 +54,7 @@ dev = [
 [project.scripts]
 omni-cortex = "omni_cortex.server:main"
 omni-cortex-setup = "omni_cortex.setup:main"
+omni-cortex-dashboard = "omni_cortex.dashboard:main"
 
 [tool.hatch.build]
 sources = ["src"]
@@ -66,11 +67,15 @@ include = [
     "/src",
     "/hooks",
     "/scripts",
+    "/dashboard/backend",
+    "/dashboard/frontend/dist",
     "/README.md",
 ]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "hooks" = "share/omni-cortex/hooks"
+"dashboard/backend" = "share/omni-cortex/dashboard/backend"
+"dashboard/frontend/dist" = "share/omni-cortex/dashboard/frontend/dist"
 
 [tool.ruff]
 line-length = 100
