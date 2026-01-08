@@ -241,11 +241,33 @@ def create_quickstart_pdf():
     ]))
     elements.append(install_table)
 
-    elements.append(Spacer(1, 15))
+    elements.append(Spacer(1, 10))
     elements.append(Paragraph(
         "For AI-powered semantic search: <b>pip install omni-cortex[semantic]</b>",
         styles['OCBody']
     ))
+
+    elements.append(Spacer(1, 15))
+    elements.append(Paragraph("Web Dashboard (Optional)", styles['OCSubSection']))
+    elements.append(Paragraph(
+        "Launch a visual interface for browsing and managing memories:",
+        styles['OCBody']
+    ))
+    dashboard_data = [
+        [Paragraph("omni-cortex-dashboard", styles['OCCode'])],
+        [Paragraph("Opens at <b>http://localhost:8765</b>",
+            ParagraphStyle('DashInfo', fontSize=9, textColor=TEXT_MUTED, alignment=TA_CENTER))],
+    ]
+    dashboard_table = Table(dashboard_data, colWidths=[5.5*inch])
+    dashboard_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_ACCENT),
+        ('LEFTPADDING', (0, 0), (-1, -1), 15),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 15),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBEFORE', (0, 0), (0, -1), 3, SECONDARY),
+    ]))
+    elements.append(dashboard_table)
 
     # === PAGE 2: Core Features ===
     elements.append(PageBreak())
@@ -433,8 +455,9 @@ def create_comparison_pdf():
         ['Auto-categorization', '—', '✓ 11 memory types'],
         ['Memory relationships', '—', '✓ Link related memories'],
         ['Importance decay', '—', '✓ Smart ranking'],
-        ['Export formats', 'JSON only', 'Markdown, JSON, SQLite'],
+        ['Export formats', 'JSON only', 'Markdown, JSON, SQLite, CSV'],
         ['Memory freshness', '—', '✓ Review & archive'],
+        ['Web Dashboard', '—', '✓ Full GUI with charts'],
         ['Tool count', '2-4', '18 tools'],
     ]
 
@@ -757,10 +780,473 @@ def create_command_reference_pdf():
     print("Created: OmniCortex_CommandReference.pdf")
 
 
+# === DOCUMENT 5: DASHBOARD USER GUIDE ===
+def create_dashboard_guide_pdf():
+    """Create the Dashboard User Guide PDF (Level 5 - Extreme)."""
+    doc = SimpleDocTemplate(
+        "D:/Projects/omni-cortex/docs/OmniCortex_DashboardGuide.pdf",
+        pagesize=letter,
+        leftMargin=40, rightMargin=40,
+        topMargin=55, bottomMargin=45
+    )
+
+    styles = create_styles()
+    elements = []
+
+    # === PAGE 1: Title & Overview ===
+    elements.append(Paragraph("OmniCortex Web Dashboard", styles['OCDocTitle']))
+    elements.append(Paragraph("User Guide", styles['OCDocSubtitle']))
+
+    elements.append(Paragraph(
+        "The OmniCortex Dashboard is a visual interface for browsing, searching, and managing your memories. "
+        "Built with Vue 3 and FastAPI, it provides real-time updates and powerful analytics.",
+        styles['OCBody']
+    ))
+
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph("Quick Start", styles['OCSubSection']))
+
+    # Quick start box
+    start_data = [
+        [Paragraph("<font name='Courier' size='11'>omni-cortex-dashboard</font>",
+            ParagraphStyle('Code', alignment=TA_CENTER))],
+        [Paragraph("Opens at <b>http://localhost:8765</b>",
+            ParagraphStyle('Info', fontSize=9, textColor=TEXT_MUTED, alignment=TA_CENTER))],
+    ]
+    start_table = Table(start_data, colWidths=[5.5*inch])
+    start_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LINEBEFORE', (0, 0), (0, -1), 3, ACCENT),
+    ]))
+    elements.append(start_table)
+    elements.append(Spacer(1, 15))
+
+    elements.append(Paragraph("Key Features", styles['OCSubSection']))
+
+    # Features in 2 columns
+    features_left = create_feature_box("Core Features", [
+        "6 Feature Tabs",
+        "Real-time WebSocket updates",
+        "Project switching",
+        "Dark/Light theme support"
+    ], PRIMARY)
+
+    features_right = create_feature_box("Data Management", [
+        "Export to JSON, Markdown, CSV",
+        "Bulk status updates",
+        "Memory editing & deletion",
+        "Advanced filtering"
+    ], SECONDARY)
+
+    feat_table = Table([[features_left, Spacer(1, 10), features_right]],
+                       colWidths=[2.7*inch, 0.2*inch, 2.7*inch])
+    feat_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+    elements.append(feat_table)
+    elements.append(Spacer(1, 15))
+
+    # 6 Tabs overview
+    elements.append(Paragraph("Dashboard Tabs Overview", styles['OCSubSection']))
+    tabs_data = [
+        ['Tab', 'Icon', 'Purpose'],
+        ['Memories', 'Database', 'Browse, search, filter, and edit memories'],
+        ['Activity', 'History', 'View complete audit trail of tool usage'],
+        ['Statistics', 'BarChart', 'Analytics: heatmaps, charts, distributions'],
+        ['Review', 'RefreshCw', 'Mark stale memories as fresh/outdated/archived'],
+        ['Graph', 'Network', 'Visualize memory relationships with D3.js'],
+        ['Ask AI', 'MessageSquare', 'Natural language queries (requires Gemini API)'],
+    ]
+    tabs_table = Table(tabs_data, colWidths=[1.2*inch, 0.9*inch, 3.4*inch])
+    tabs_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(tabs_table)
+
+    # === PAGE 2: Memories & Activity Tabs ===
+    elements.append(PageBreak())
+    elements.append(Paragraph("Memories Tab", styles['OCSectionTitle']))
+
+    elements.append(Paragraph("The Memory Browser is the primary interface for viewing and managing your stored knowledge.", styles['OCBody']))
+
+    mem_features = [
+        ("<b>Infinite Scroll</b>", "Loads 50+ memories at a time as you scroll"),
+        ("<b>Advanced Filtering</b>", "Filter by type, status, tags, importance range"),
+        ("<b>Sorting Options</b>", "Sort by last accessed, created date, importance, access count"),
+        ("<b>Full-text Search</b>", "Search in content and context with highlighting"),
+        ("<b>Detail Panel</b>", "Right sidebar shows full memory with edit/delete options"),
+        ("<b>Export Options</b>", "Copy as Markdown or download as JSON"),
+    ]
+
+    for title, desc in mem_features:
+        elements.append(Paragraph(f"• {title} - {desc}", styles['OCBulletItem']))
+
+    elements.append(Spacer(1, 15))
+    elements.append(Paragraph("Activity Tab", styles['OCSectionTitle']))
+
+    elements.append(Paragraph("Complete audit trail of every tool call made during your sessions.", styles['OCBody']))
+
+    activity_features = [
+        ("<b>Event Type Filter</b>", "pre_tool_use, post_tool_use, decision, observation"),
+        ("<b>Tool Filter</b>", "Filter by specific tool name"),
+        ("<b>Status Indicators</b>", "Success/failure badges with error messages"),
+        ("<b>Timing Info</b>", "Duration in ms/seconds, exact timestamps"),
+        ("<b>Date Grouping</b>", "Activities grouped chronologically by date"),
+    ]
+
+    for title, desc in activity_features:
+        elements.append(Paragraph(f"• {title} - {desc}", styles['OCBulletItem']))
+
+    elements.append(Spacer(1, 15))
+
+    # Stats callout
+    stats_box_data = [
+        [Paragraph("<b>Activity Stats:</b> Total activities | Success count | Failed count",
+            ParagraphStyle('StatsBox', fontSize=9, textColor=WHITE, alignment=TA_CENTER))]
+    ]
+    stats_box = Table(stats_box_data, colWidths=[5.5*inch])
+    stats_box.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), SECONDARY),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(stats_box)
+
+    # === PAGE 3: Statistics & Review Tabs ===
+    elements.append(PageBreak())
+    elements.append(Paragraph("Statistics Tab", styles['OCSectionTitle']))
+
+    elements.append(Paragraph("Comprehensive analytics and visualizations for your memory data.", styles['OCBody']))
+
+    # Charts table
+    charts_data = [
+        ['Chart', 'Description'],
+        ['Overview Cards', 'Total memories, average importance, total views'],
+        ['Type Distribution', 'Horizontal bar chart showing memories per type'],
+        ['Status Distribution', 'Progress bars for fresh/needs_review/outdated/archived'],
+        ['Top Tags', 'Top 15 tags with usage counts (clickable)'],
+        ['Activity Heatmap', '90-day GitHub-style calendar visualization'],
+        ['Tool Usage Chart', 'Top 10 tools with success rate indicators'],
+        ['Memory Growth', '30-day line chart: cumulative + daily new'],
+    ]
+    charts_table = Table(charts_data, colWidths=[1.8*inch, 3.7*inch])
+    charts_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), ACCENT),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(charts_table)
+    elements.append(Spacer(1, 20))
+
+    elements.append(Paragraph("Review Tab (Freshness Management)", styles['OCSectionTitle']))
+
+    elements.append(Paragraph("Keep your knowledge base fresh by reviewing stale memories.", styles['OCBody']))
+
+    review_features = [
+        ("<b>Days Threshold</b>", "Configure: 7, 14, 30, 60, or 90 days"),
+        ("<b>Bulk Selection</b>", "Select all or individual memories"),
+        ("<b>Batch Actions</b>", "Mark Fresh | Mark Outdated | Archive"),
+        ("<b>Progress Bar</b>", "Shows review completion percentage"),
+    ]
+
+    for title, desc in review_features:
+        elements.append(Paragraph(f"• {title} - {desc}", styles['OCBulletItem']))
+
+    # === PAGE 4: Graph & Ask AI Tabs ===
+    elements.append(PageBreak())
+    elements.append(Paragraph("Relationship Graph Tab", styles['OCSectionTitle']))
+
+    elements.append(Paragraph("Interactive D3.js force-directed network visualization of memory connections.", styles['OCBody']))
+
+    # Graph features in two columns
+    graph_left = create_feature_box("Node Features", [
+        "Color-coded by memory type",
+        "Drag to reposition",
+        "Click to select",
+        "Double-click to recenter"
+    ], PRIMARY)
+
+    graph_right = create_feature_box("Edge Types", [
+        "related_to (solid)",
+        "supersedes (dashed, amber)",
+        "derived_from (dotted, purple)",
+        "contradicts (dotted, red)"
+    ], SECONDARY)
+
+    graph_table = Table([[graph_left, Spacer(1, 10), graph_right]],
+                        colWidths=[2.7*inch, 0.2*inch, 2.7*inch])
+    graph_table.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+    elements.append(graph_table)
+    elements.append(Spacer(1, 8))
+
+    elements.append(Paragraph("• <b>Zoom Controls:</b> In, out, reset with percentage display", styles['OCBulletItem']))
+    elements.append(Paragraph("• <b>Legend Panel:</b> Shows all node types and edge types", styles['OCBulletItem']))
+    elements.append(Paragraph("• <b>Info Panel:</b> Selected memory content preview at bottom", styles['OCBulletItem']))
+
+    elements.append(Spacer(1, 15))
+    elements.append(Paragraph("Ask AI Tab", styles['OCSectionTitle']))
+
+    elements.append(Paragraph("Natural language queries about your memories using Gemini.", styles['OCBody']))
+
+    # Setup callout
+    setup_data = [
+        [Paragraph("<b>Setup Required:</b> export GEMINI_API_KEY=your_api_key_here",
+            ParagraphStyle('SetupBox', fontName='Courier', fontSize=9, textColor=WHITE, alignment=TA_CENTER))]
+    ]
+    setup_table = Table(setup_data, colWidths=[5.5*inch])
+    setup_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F59E0B')),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(setup_table)
+    elements.append(Spacer(1, 10))
+
+    ai_features = [
+        ("<b>Conversational Interface</b>", "Multi-turn conversation history"),
+        ("<b>Source Citations</b>", "Responses cite which memories were used"),
+        ("<b>Clickable Sources</b>", "Click citations to navigate to memory"),
+        ("<b>Example Prompts</b>", "Suggested queries to get started"),
+    ]
+
+    for title, desc in ai_features:
+        elements.append(Paragraph(f"• {title} - {desc}", styles['OCBulletItem']))
+
+    # === PAGE 5: Navigation & Tips ===
+    elements.append(PageBreak())
+    elements.append(Paragraph("Header Navigation", styles['OCSectionTitle']))
+
+    nav_data = [
+        ['Element', 'Function'],
+        ['Project Switcher', 'Switch between local and global databases'],
+        ['Search Bar', 'Full-text search (Enter to search, Esc to clear)'],
+        ['Refresh Button', 'Reload data with loading spinner'],
+        ['Export Button', 'Export to JSON, Markdown, or CSV'],
+        ['Filter Toggle', 'Show/hide the filter panel'],
+        ['Theme Switcher', 'Light, Dark, or System preference'],
+        ['Connection Status', 'Live/Offline indicator with last update time'],
+    ]
+    nav_table = Table(nav_data, colWidths=[1.8*inch, 3.7*inch])
+    nav_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(nav_table)
+    elements.append(Spacer(1, 15))
+
+    elements.append(Paragraph("Keyboard Shortcuts", styles['OCSubSection']))
+    shortcuts_data = [
+        ['Shortcut', 'Action'],
+        ['Enter', 'Submit search or chat message'],
+        ['Shift+Enter', 'New line in chat input'],
+        ['Esc', 'Clear search input'],
+    ]
+    shortcuts_table = Table(shortcuts_data, colWidths=[1.5*inch, 4*inch])
+    shortcuts_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), SECONDARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (0, -1), 'Courier'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(shortcuts_table)
+    elements.append(Spacer(1, 15))
+
+    elements.append(Paragraph("Pro Tips", styles['OCSubSection']))
+    tips = [
+        "Use the <b>Activity Heatmap</b> to identify your most productive periods",
+        "Link related memories to build a knowledge graph for visualization",
+        "Review stale memories monthly to keep your knowledge base fresh",
+        "Use <b>semantic search</b> for conceptual queries (requires omni-cortex[semantic])",
+        "Export memories before major refactoring for backup",
+    ]
+    for tip in tips:
+        elements.append(Paragraph(f"• {tip}", styles['OCBulletItem']))
+
+    elements.append(Spacer(1, 15))
+    elements.append(create_callout_box(
+        "OmniCortex v1.0.5 | github.com/AllCytes/Omni-Cortex",
+        ACCENT
+    ))
+
+    # Build PDF
+    doc.build(elements, onFirstPage=lambda c, d: header_footer(c, d, "Dashboard User Guide"),
+              onLaterPages=lambda c, d: header_footer(c, d, "Dashboard User Guide"))
+    print("Created: OmniCortex_DashboardGuide.pdf")
+
+
+# === DOCUMENT 6: DASHBOARD QUICK REFERENCE ===
+def create_dashboard_quickref_pdf():
+    """Create the Dashboard Quick Reference PDF (1-2 pages)."""
+    doc = SimpleDocTemplate(
+        "D:/Projects/omni-cortex/docs/OmniCortex_DashboardQuickRef.pdf",
+        pagesize=letter,
+        leftMargin=35, rightMargin=35,
+        topMargin=50, bottomMargin=40
+    )
+
+    styles = create_styles()
+    elements = []
+
+    elements.append(Paragraph("OmniCortex Dashboard Quick Reference", styles['OCDocTitle']))
+    elements.append(Spacer(1, 5))
+
+    # Quick start
+    start_box = Table([
+        [Paragraph("<font name='Courier' size='12'>omni-cortex-dashboard</font> → http://localhost:8765",
+            ParagraphStyle('QStart', alignment=TA_CENTER, textColor=WHITE))]
+    ], colWidths=[5.8*inch])
+    start_box.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), PRIMARY),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(start_box)
+    elements.append(Spacer(1, 12))
+
+    # 6 Tabs - simple table
+    elements.append(Paragraph("Six Feature Tabs", styles['OCSubSection']))
+
+    tabs_data = [
+        ['Tab', 'Key Features'],
+        ['Memories', 'Browse & search | Filter by type/status | Edit/delete | Export'],
+        ['Activity', 'Tool usage audit | Success/failure | Event filtering | Dates'],
+        ['Statistics', 'Overview cards | Activity heatmap | Tool usage | Growth chart'],
+        ['Review', 'Freshness review | Days threshold | Bulk actions | Progress'],
+        ['Graph', 'D3.js network | Zoom controls | 4 edge types | Node selection'],
+        ['Ask AI', 'Gemini chat | Source citations | Conversation history'],
+    ]
+    tabs_table = Table(tabs_data, colWidths=[1.2*inch, 4.4*inch])
+    tabs_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 1), (0, -1), PRIMARY),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(tabs_table)
+    elements.append(Spacer(1, 12))
+
+    # Header Navigation and Shortcuts as simple tables
+    elements.append(Paragraph("Header Navigation", styles['OCSubSection']))
+    nav_data = [
+        ['Element', 'Function'],
+        ['Project Switcher', 'Switch between local and global databases'],
+        ['Search Bar', 'Full-text search (Enter to search, Esc to clear)'],
+        ['Refresh', 'Reload data with loading spinner'],
+        ['Export', 'Export to JSON, Markdown, or CSV'],
+        ['Theme', 'Light, Dark, or System preference'],
+        ['Status', 'Live/Offline connection indicator'],
+    ]
+    nav_table = Table(nav_data, colWidths=[1.5*inch, 4.1*inch])
+    nav_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(nav_table)
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("Keyboard Shortcuts", styles['OCSubSection']))
+    shortcuts_data = [
+        ['Shortcut', 'Action'],
+        ['Enter', 'Submit search or chat'],
+        ['Shift+Enter', 'New line in chat'],
+        ['Esc', 'Clear search input'],
+    ]
+    shortcuts_table = Table(shortcuts_data, colWidths=[1.5*inch, 4.1*inch])
+    shortcuts_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), SECONDARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (0, -1), 'Courier'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(shortcuts_table)
+    elements.append(Spacer(1, 10))
+
+    # Graph relationship types
+    elements.append(Paragraph("Relationship Graph Edge Types", styles['OCSubSection']))
+    edge_data = [
+        ['Edge Type', 'Style', 'Meaning'],
+        ['related_to', 'Solid gray', 'General association'],
+        ['supersedes', 'Dashed amber', 'New replaces old'],
+        ['derived_from', 'Dotted purple', 'Based on another'],
+        ['contradicts', 'Dotted red', 'Conflicts with'],
+    ]
+    edge_table = Table(edge_data, colWidths=[1.5*inch, 1.5*inch, 2.5*inch])
+    edge_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (0, -1), 'Courier'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(edge_table)
+    elements.append(Spacer(1, 12))
+
+    # Footer
+    elements.append(create_callout_box(
+        "OmniCortex v1.0.5 | pip install omni-cortex | omni-cortex-dashboard",
+        ACCENT
+    ))
+
+    # Build PDF
+    doc.build(elements, onFirstPage=lambda c, d: header_footer(c, d, "Dashboard Quick Reference"),
+              onLaterPages=lambda c, d: header_footer(c, d, "Dashboard Quick Reference"))
+    print("Created: OmniCortex_DashboardQuickRef.pdf")
+
+
 if __name__ == "__main__":
     print("Creating OmniCortex Teaching Materials...")
     create_quickstart_pdf()
     create_comparison_pdf()
     create_philosophy_pdf()
     create_command_reference_pdf()
+    create_dashboard_guide_pdf()
+    create_dashboard_quickref_pdf()
     print("\nAll PDFs created successfully!")
