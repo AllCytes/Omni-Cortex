@@ -2,7 +2,9 @@
 # Trigger reload for relationship graph column fix
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -466,6 +468,117 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"[WS] Error: {e}")
         await manager.disconnect(client_id)
+
+
+# --- Export Endpoints ---
+
+
+@app.get("/api/export")
+async def export_memories(
+    project: str = Query(..., description="Path to the database file"),
+    format: str = Query("json", description="Export format: json, markdown, csv"),
+    memory_ids: Optional[str] = Query(None, description="Comma-separated memory IDs to export, or all if empty"),
+    include_relationships: bool = Query(True, description="Include memory relationships"),
+):
+    """Export memories to specified format."""
+    from fastapi.responses import Response
+    import csv
+    import io
+
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    # Get memories
+    if memory_ids:
+        ids = memory_ids.split(",")
+        memories = [get_memory_by_id(project, mid) for mid in ids if mid.strip()]
+        memories = [m for m in memories if m is not None]
+    else:
+        from models import FilterParams
+        filters = FilterParams(limit=1000, offset=0, sort_by="created_at", sort_order="desc")
+        memories = get_memories(project, filters)
+
+    # Get relationships if requested
+    relationships = []
+    if include_relationships:
+        relationships = get_relationships(project)
+
+    if format == "json":
+        export_data = {
+            "exported_at": datetime.now().isoformat(),
+            "project": project,
+            "memory_count": len(memories),
+            "memories": [m.model_dump(by_alias=True) for m in memories],
+            "relationships": relationships if include_relationships else [],
+        }
+        return Response(
+            content=json.dumps(export_data, indent=2, default=str),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=memories_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"}
+        )
+
+    elif format == "markdown":
+        md_lines = [
+            f"# Omni-Cortex Memory Export",
+            f"",
+            f"**Exported:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"**Total Memories:** {len(memories)}",
+            f"",
+            "---",
+            "",
+        ]
+        for m in memories:
+            md_lines.extend([
+                f"## {m.type.title()}: {m.content[:50]}{'...' if len(m.content) > 50 else ''}",
+                f"",
+                f"**ID:** `{m.id}`",
+                f"**Type:** {m.type}",
+                f"**Status:** {m.status}",
+                f"**Importance:** {m.importance_score}",
+                f"**Created:** {m.created_at}",
+                f"**Tags:** {', '.join(m.tags) if m.tags else 'None'}",
+                f"",
+                "### Content",
+                f"",
+                m.content,
+                f"",
+                "### Context",
+                f"",
+                m.context or "_No context_",
+                f"",
+                "---",
+                "",
+            ])
+        return Response(
+            content="\n".join(md_lines),
+            media_type="text/markdown",
+            headers={"Content-Disposition": f"attachment; filename=memories_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"}
+        )
+
+    elif format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["id", "type", "status", "importance", "content", "context", "tags", "created_at", "last_accessed"])
+        for m in memories:
+            writer.writerow([
+                m.id,
+                m.type,
+                m.status,
+                m.importance_score,
+                m.content,
+                m.context or "",
+                ",".join(m.tags) if m.tags else "",
+                m.created_at,
+                m.last_accessed or "",
+            ])
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=memories_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"}
+        )
+
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {format}. Use json, markdown, or csv.")
 
 
 # --- Health Check ---

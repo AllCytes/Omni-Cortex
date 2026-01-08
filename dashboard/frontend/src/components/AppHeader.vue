@@ -2,8 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useTheme } from '@/composables/useTheme'
-import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw } from 'lucide-vue-next'
+import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw, Download } from 'lucide-vue-next'
 import ProjectSwitcher from './ProjectSwitcher.vue'
+import ExportPanel from './ExportPanel.vue'
 
 const emit = defineEmits<{
   (e: 'toggle-filters'): void
@@ -14,6 +15,7 @@ const { theme, toggleTheme } = useTheme()
 
 const searchQuery = ref('')
 const showProjectSwitcher = ref(false)
+const showExportPanel = ref(false)
 const isRefreshing = ref(false)
 
 const totalMemories = computed(() => store.stats?.total_count ?? 0)
@@ -123,6 +125,15 @@ onMounted(() => {
             <RefreshCw class="w-5 h-5" />
           </button>
 
+          <!-- Export Button -->
+          <button
+            @click="showExportPanel = true"
+            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Export memories"
+          >
+            <Download class="w-5 h-5" />
+          </button>
+
           <!-- Filter Toggle -->
           <button
             @click="emit('toggle-filters')"
@@ -161,5 +172,8 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Export Panel Modal -->
+    <ExportPanel v-if="showExportPanel" @close="showExportPanel = false" />
   </header>
 </template>
