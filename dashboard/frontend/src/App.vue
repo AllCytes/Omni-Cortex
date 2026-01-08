@@ -30,7 +30,7 @@ function toggleFilters() {
   showFilters.value = !showFilters.value
 }
 
-function handleNavigateToMemory(memoryId: string) {
+function handleNavigateToMemory(_memoryId: string) {
   // Switch to memories tab when navigating from chat
   activeTab.value = 'memories'
 }

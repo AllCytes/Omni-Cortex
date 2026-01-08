@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
-import { getRelationshipGraph, type GraphNode, type GraphEdge } from '@/services/api'
+import { getRelationshipGraph, type GraphNode } from '@/services/api'
 import * as d3 from 'd3'
 import { GitBranch, ZoomIn, ZoomOut, Maximize2, RefreshCw } from 'lucide-vue-next'
 
@@ -170,9 +170,9 @@ function renderGraph() {
     .call(d3.drag<SVGGElement, D3Node>()
       .on('start', dragstarted)
       .on('drag', dragged)
-      .on('end', dragended))
-    .on('click', (event, d) => handleNodeClick(d))
-    .on('dblclick', (event, d) => handleNodeDoubleClick(d))
+      .on('end', dragended) as any)
+    .on('click', (_event, d) => handleNodeClick(d))
+    .on('dblclick', (_event, d) => handleNodeDoubleClick(d))
 
   // Node circles
   node.append('circle')

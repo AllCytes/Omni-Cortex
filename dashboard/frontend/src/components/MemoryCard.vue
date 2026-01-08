@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Memory } from '@/types'
-import { TYPE_COLORS, TYPE_TEXT_COLORS, TYPE_BORDER_COLORS } from '@/types'
+import { TYPE_COLORS, TYPE_BORDER_COLORS } from '@/types'
 import { truncateWithHighlight } from '@/utils/highlight'
-import { Clock, Eye, Tag } from 'lucide-vue-next'
+import { Clock, Eye } from 'lucide-vue-next'
 
 const props = defineProps<{
   memory: Memory
@@ -12,7 +12,6 @@ const props = defineProps<{
 }>()
 
 const typeColor = computed(() => TYPE_COLORS[props.memory.memory_type] || 'bg-gray-500')
-const typeTextColor = computed(() => TYPE_TEXT_COLORS[props.memory.memory_type] || 'text-gray-500')
 const borderColor = computed(() => TYPE_BORDER_COLORS[props.memory.memory_type] || 'border-l-gray-500')
 
 const contentPreview = computed(() => {

@@ -10,7 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const store = useDashboardStore()
-const { theme, isDark, toggleTheme } = useTheme()
+const { theme, toggleTheme } = useTheme()
 
 const searchQuery = ref('')
 const showProjectSwitcher = ref(false)

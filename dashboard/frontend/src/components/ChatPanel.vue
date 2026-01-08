@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
-import { askAboutMemories, getChatStatus, type ChatSource, type ChatResponse } from '@/services/api'
+import { askAboutMemories, getChatStatus, type ChatSource } from '@/services/api'
 import { Send, Loader2, MessageCircle, AlertCircle, Bot, User, ExternalLink, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { marked } from 'marked'
 

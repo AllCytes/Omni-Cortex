@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
-import { Clock, CheckCircle, XCircle, Wrench, Database, FileText, RefreshCw } from 'lucide-vue-next'
+import { Clock, CheckCircle, Wrench, Database, FileText, RefreshCw } from 'lucide-vue-next'
 import type { Activity } from '@/types'
 
 const store = useDashboardStore()
 
 const activities = ref<Activity[]>([])
 const isLoading = ref(false)
-const timeRange = ref<number>(24) // hours
+// const timeRange = ref<number>(24) // TODO: implement time range filtering
 const filterEventType = ref<string | null>(null)
 const filterToolName = ref<string | null>(null)
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import MemoryCard from './MemoryCard.vue'
 import { Loader2 } from 'lucide-vue-next'

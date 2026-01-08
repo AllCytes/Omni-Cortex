@@ -153,7 +153,7 @@ export interface ChatResponse {
   error: string | null
 }
 
-export async function getChatStatus(dbPath: string): Promise<{ available: boolean; message: string }> {
+export async function getChatStatus(_dbPath: string): Promise<{ available: boolean; message: string }> {
   const response = await api.get('/chat/status')
   return response.data
 }

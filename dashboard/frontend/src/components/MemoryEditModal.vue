@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Memory, MemoryUpdate } from '@/types'
-import { MEMORY_TYPES, MEMORY_STATUSES, TYPE_COLORS } from '@/types'
+import { MEMORY_TYPES, MEMORY_STATUSES } from '@/types'
 import { X, Save, Loader2 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -48,7 +48,7 @@ watch(() => props.isOpen, (isOpen) => {
   }
 })
 
-const typeColor = computed(() => TYPE_COLORS[memoryType.value] || 'bg-gray-500')
+// const typeColor = computed(() => TYPE_COLORS[memoryType.value] || 'bg-gray-500') // TODO: add colored type badge
 
 const parsedTags = computed(() => {
   if (!tagsInput.value.trim()) return []
