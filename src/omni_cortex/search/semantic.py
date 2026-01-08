@@ -12,6 +12,7 @@ from ..embeddings.local import (
     blob_to_vector,
     DEFAULT_MODEL_NAME,
 )
+from ..config import load_config
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,12 @@ def semantic_search(
     Returns:
         List of (Memory, similarity_score) tuples
     """
+    # Check if embeddings are enabled - skip semantic search if disabled
+    config = load_config()
+    if not config.embedding_enabled:
+        logger.debug("Embeddings disabled, skipping semantic search")
+        return []
+
     # Generate embedding for query
     try:
         query_embedding = generate_embedding(query, model_name)

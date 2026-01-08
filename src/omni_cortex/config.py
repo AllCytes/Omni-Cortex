@@ -31,8 +31,8 @@ class CortexConfig:
     auto_provide_context: bool = True
     context_depth: int = 3
 
-    # Search
-    default_search_mode: str = "hybrid"
+    # Search (default to keyword since embeddings are disabled by default)
+    default_search_mode: str = "keyword"
 
     # Global
     global_sync_enabled: bool = True
