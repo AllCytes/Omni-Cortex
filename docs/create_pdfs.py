@@ -269,36 +269,9 @@ def create_quickstart_pdf():
     ]))
     elements.append(dashboard_table)
 
-    # === PAGE 2: Core Features ===
+    # === PAGE 2: Architecture ===
     elements.append(PageBreak())
-    elements.append(Paragraph("Core Features", styles['OCSectionTitle']))
-
-    # Tool categories table
-    tool_data = [
-        ['Category', 'Count', 'Purpose'],
-        ['Memory Tools', '6', 'Store, search, update, delete memories'],
-        ['Activity Tools', '3', 'Log and query tool usage'],
-        ['Session Tools', '3', 'Manage work sessions with context'],
-        ['Utility Tools', '3', 'Tags, reviews, exports'],
-        ['Global Tools', '3', 'Cross-project search and sync'],
-    ]
-    tool_table = Table(tool_data, colWidths=[1.8*inch, 0.8*inch, 3*inch])
-    tool_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('ALIGN', (1, 0), (1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-    ]))
-    elements.append(tool_table)
-    elements.append(Spacer(1, 20))
-
-    elements.append(Paragraph("Dual-Layer Storage", styles['OCSubSection']))
+    elements.append(Paragraph("Dual-Layer Storage", styles['OCSectionTitle']))
 
     # Two column layout for dual storage
     storage_left = create_feature_box("Activity Log", [
@@ -369,7 +342,12 @@ def create_quickstart_pdf():
         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
     ]))
     elements.append(cmd_table)
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph(
+        "<i>See <b>CommandReference.pdf</b> for complete tool documentation with all parameters.</i>",
+        ParagraphStyle('RefNote', fontSize=9, textColor=TEXT_MUTED)
+    ))
+    elements.append(Spacer(1, 15))
 
     elements.append(Paragraph("Token/Context Usage", styles['OCSubSection']))
     elements.append(Paragraph(
@@ -488,10 +466,6 @@ def create_comparison_pdf():
          "and key learnings that persist across restarts."),
         ("Multi-Factor Ranking", "Memories are ranked by relevance, importance score, access frequency, "
          "and recency - not just keyword matching."),
-        ("Memory Types", "11 auto-detected types: solution, warning, config, troubleshooting, code, "
-         "error, command, concept, decision, tip, general."),
-        ("Relationship Links", "Connect related memories with supersedes, derived_from, related_to, "
-         "or contradicts relationships."),
     ]
 
     for title, desc in diff_items:
@@ -1099,148 +1073,6 @@ def create_dashboard_guide_pdf():
     print("Created: OmniCortex_DashboardGuide.pdf")
 
 
-# === DOCUMENT 6: DASHBOARD QUICK REFERENCE ===
-def create_dashboard_quickref_pdf():
-    """Create the Dashboard Quick Reference PDF (1-2 pages)."""
-    doc = SimpleDocTemplate(
-        "D:/Projects/omni-cortex/docs/OmniCortex_DashboardQuickRef.pdf",
-        pagesize=letter,
-        leftMargin=35, rightMargin=35,
-        topMargin=50, bottomMargin=40
-    )
-
-    styles = create_styles()
-    elements = []
-
-    elements.append(Paragraph("OmniCortex Dashboard Quick Reference", styles['OCDocTitle']))
-    elements.append(Spacer(1, 5))
-
-    # Quick start
-    start_box = Table([
-        [Paragraph("<font name='Courier' size='12'>omni-cortex-dashboard</font> → http://localhost:8765",
-            ParagraphStyle('QStart', alignment=TA_CENTER, textColor=WHITE))]
-    ], colWidths=[5.8*inch])
-    start_box.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), PRIMARY),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-    ]))
-    elements.append(start_box)
-    elements.append(Spacer(1, 12))
-
-    # 6 Tabs - simple table
-    elements.append(Paragraph("Six Feature Tabs", styles['OCSubSection']))
-
-    tabs_data = [
-        ['Tab', 'Key Features'],
-        ['Memories', 'Browse & search | Filter by type/status | Edit/delete | Export'],
-        ['Activity', 'Tool usage audit | Success/failure | Event filtering | Dates'],
-        ['Statistics', 'Overview cards | Activity heatmap | Tool usage | Growth chart'],
-        ['Review', 'Freshness review | Days threshold | Bulk actions | Progress'],
-        ['Graph', 'D3.js network | Zoom controls | 4 edge types | Node selection'],
-        ['Ask AI', 'Gemini chat | Source citations | Conversation history'],
-    ]
-    tabs_table = Table(tabs_data, colWidths=[1.2*inch, 4.4*inch])
-    tabs_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
-        ('TEXTCOLOR', (0, 1), (0, -1), PRIMARY),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-    ]))
-    elements.append(tabs_table)
-    elements.append(Spacer(1, 12))
-
-    # Header Navigation and Shortcuts as simple tables
-    elements.append(Paragraph("Header Navigation", styles['OCSubSection']))
-    nav_data = [
-        ['Element', 'Function'],
-        ['Project Switcher', 'Switch between local and global databases'],
-        ['Search Bar', 'Full-text search (Enter to search, Esc to clear)'],
-        ['Refresh', 'Reload data with loading spinner'],
-        ['Export', 'Export to JSON, Markdown, or CSV'],
-        ['Theme', 'Light, Dark, or System preference'],
-        ['Status', 'Live/Offline connection indicator'],
-    ]
-    nav_table = Table(nav_data, colWidths=[1.5*inch, 4.1*inch])
-    nav_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, BG_LIGHT]),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(nav_table)
-    elements.append(Spacer(1, 10))
-
-    elements.append(Paragraph("Keyboard Shortcuts", styles['OCSubSection']))
-    shortcuts_data = [
-        ['Shortcut', 'Action'],
-        ['Enter', 'Submit search or chat'],
-        ['Shift+Enter', 'New line in chat'],
-        ['Esc', 'Clear search input'],
-    ]
-    shortcuts_table = Table(shortcuts_data, colWidths=[1.5*inch, 4.1*inch])
-    shortcuts_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), SECONDARY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (0, -1), 'Courier'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(shortcuts_table)
-    elements.append(Spacer(1, 10))
-
-    # Graph relationship types
-    elements.append(Paragraph("Relationship Graph Edge Types", styles['OCSubSection']))
-    edge_data = [
-        ['Edge Type', 'Style', 'Meaning'],
-        ['related_to', 'Solid gray', 'General association'],
-        ['supersedes', 'Dashed amber', 'New replaces old'],
-        ['derived_from', 'Dotted purple', 'Based on another'],
-        ['contradicts', 'Dotted red', 'Conflicts with'],
-    ]
-    edge_table = Table(edge_data, colWidths=[1.5*inch, 1.5*inch, 2.5*inch])
-    edge_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EC4899')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (0, -1), 'Courier'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
-        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-    ]))
-    elements.append(edge_table)
-    elements.append(Spacer(1, 12))
-
-    # Footer
-    elements.append(create_callout_box(
-        "OmniCortex v1.0.5 | pip install omni-cortex | omni-cortex-dashboard",
-        ACCENT
-    ))
-
-    # Build PDF
-    doc.build(elements, onFirstPage=lambda c, d: header_footer(c, d, "Dashboard Quick Reference"),
-              onLaterPages=lambda c, d: header_footer(c, d, "Dashboard Quick Reference"))
-    print("Created: OmniCortex_DashboardQuickRef.pdf")
-
-
 if __name__ == "__main__":
     print("Creating OmniCortex Teaching Materials...")
     create_quickstart_pdf()
@@ -1248,5 +1080,4 @@ if __name__ == "__main__":
     create_philosophy_pdf()
     create_command_reference_pdf()
     create_dashboard_guide_pdf()
-    create_dashboard_quickref_pdf()
     print("\nAll PDFs created successfully!")
