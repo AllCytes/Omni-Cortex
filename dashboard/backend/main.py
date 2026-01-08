@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+import traceback
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -37,6 +38,7 @@ from database import (
     search_memories,
     update_memory,
 )
+from logging_config import log_success, log_error
 from models import ChatRequest, ChatResponse, FilterParams, MemoryUpdate, ProjectInfo
 from project_scanner import scan_projects
 from websocket_manager import manager
@@ -160,23 +162,30 @@ async def list_memories(
     offset: int = 0,
 ):
     """Get memories with filtering and pagination."""
-    if not Path(project).exists():
-        raise HTTPException(status_code=404, detail="Database not found")
+    try:
+        if not Path(project).exists():
+            log_error("/api/memories", FileNotFoundError("Database not found"), project=project)
+            raise HTTPException(status_code=404, detail="Database not found")
 
-    filters = FilterParams(
-        memory_type=memory_type,
-        status=status,
-        tags=tags.split(",") if tags else None,
-        search=search,
-        min_importance=min_importance,
-        max_importance=max_importance,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        limit=limit,
-        offset=offset,
-    )
+        filters = FilterParams(
+            memory_type=memory_type,
+            status=status,
+            tags=tags.split(",") if tags else None,
+            search=search,
+            min_importance=min_importance,
+            max_importance=max_importance,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset,
+        )
 
-    return get_memories(project, filters)
+        memories = get_memories(project, filters)
+        log_success("/api/memories", count=len(memories), offset=offset, filters=bool(search or memory_type))
+        return memories
+    except Exception as e:
+        log_error("/api/memories", e, project=project)
+        raise
 
 
 # NOTE: These routes MUST be defined before /api/memories/{memory_id} to avoid path conflicts
@@ -237,16 +246,25 @@ async def update_memory_endpoint(
     project: str = Query(..., description="Path to the database file"),
 ):
     """Update a memory."""
-    if not Path(project).exists():
-        raise HTTPException(status_code=404, detail="Database not found")
+    try:
+        if not Path(project).exists():
+            log_error("/api/memories/update", FileNotFoundError("Database not found"), memory_id=memory_id)
+            raise HTTPException(status_code=404, detail="Database not found")
 
-    updated = update_memory(project, memory_id, updates)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Memory not found")
+        updated = update_memory(project, memory_id, updates)
+        if not updated:
+            log_error("/api/memories/update", ValueError("Memory not found"), memory_id=memory_id)
+            raise HTTPException(status_code=404, detail="Memory not found")
 
-    # Notify connected clients
-    await manager.broadcast("memory_updated", updated.model_dump(by_alias=True))
-    return updated
+        # Notify connected clients
+        await manager.broadcast("memory_updated", updated.model_dump(by_alias=True))
+        log_success("/api/memories/update", memory_id=memory_id, fields_updated=len(updates.model_dump(exclude_unset=True)))
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/memories/update", e, memory_id=memory_id)
+        raise
 
 
 @app.delete("/api/memories/{memory_id}")
@@ -255,16 +273,25 @@ async def delete_memory_endpoint(
     project: str = Query(..., description="Path to the database file"),
 ):
     """Delete a memory."""
-    if not Path(project).exists():
-        raise HTTPException(status_code=404, detail="Database not found")
+    try:
+        if not Path(project).exists():
+            log_error("/api/memories/delete", FileNotFoundError("Database not found"), memory_id=memory_id)
+            raise HTTPException(status_code=404, detail="Database not found")
 
-    deleted = delete_memory(project, memory_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Memory not found")
+        deleted = delete_memory(project, memory_id)
+        if not deleted:
+            log_error("/api/memories/delete", ValueError("Memory not found"), memory_id=memory_id)
+            raise HTTPException(status_code=404, detail="Memory not found")
 
-    # Notify connected clients
-    await manager.broadcast("memory_deleted", {"id": memory_id})
-    return {"message": "Memory deleted", "id": memory_id}
+        # Notify connected clients
+        await manager.broadcast("memory_deleted", {"id": memory_id})
+        log_success("/api/memories/delete", memory_id=memory_id)
+        return {"message": "Memory deleted", "id": memory_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/memories/delete", e, memory_id=memory_id)
+        raise
 
 
 @app.get("/api/memories/stats/summary")
@@ -454,16 +481,24 @@ async def chat_with_memories(
     project: str = Query(..., description="Path to the database file"),
 ):
     """Ask a natural language question about memories."""
-    if not Path(project).exists():
-        raise HTTPException(status_code=404, detail="Database not found")
+    try:
+        if not Path(project).exists():
+            log_error("/api/chat", FileNotFoundError("Database not found"), question=request.question[:50])
+            raise HTTPException(status_code=404, detail="Database not found")
 
-    result = await chat_service.ask_about_memories(
-        project,
-        request.question,
-        request.max_memories,
-    )
+        result = await chat_service.ask_about_memories(
+            project,
+            request.question,
+            request.max_memories,
+        )
 
-    return ChatResponse(**result)
+        log_success("/api/chat", question_len=len(request.question), sources=len(result.get("sources", [])))
+        return ChatResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/chat", e, question=request.question[:50])
+        raise
 
 
 # --- WebSocket Endpoint ---

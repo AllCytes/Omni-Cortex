@@ -1073,6 +1073,224 @@ def create_dashboard_guide_pdf():
     print("Created: OmniCortex_DashboardGuide.pdf")
 
 
+# === DOCUMENT 6: TROUBLESHOOTING FAQ ===
+def create_troubleshooting_pdf():
+    """Create the Troubleshooting FAQ PDF."""
+    doc = SimpleDocTemplate(
+        "D:/Projects/omni-cortex/docs/OmniCortex_TroubleshootingFAQ.pdf",
+        pagesize=letter,
+        leftMargin=50, rightMargin=50,
+        topMargin=60, bottomMargin=50
+    )
+
+    styles = create_styles()
+    elements = []
+
+    elements.append(Paragraph("OmniCortex Troubleshooting FAQ", styles['OCDocTitle']))
+    elements.append(Paragraph("Common Issues & Solutions", styles['OCDocSubtitle']))
+
+    # === Installation Issues ===
+    elements.append(Paragraph("Installation Issues", styles['OCSectionTitle']))
+
+    elements.append(Paragraph(
+        "<b>Q: Command 'omni-cortex-dashboard' not recognized</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "The Python Scripts folder isn't in your PATH. Solutions:",
+        styles['OCBody']
+    ))
+    elements.append(Paragraph("• Run <font name='Courier'>pip show omni-cortex</font> to find the install location", styles['OCBulletItem']))
+    elements.append(Paragraph("• Navigate to the Scripts folder and run omni-cortex-dashboard.exe directly", styles['OCBulletItem']))
+    elements.append(Paragraph("• Add the Scripts folder to your system PATH (recommended for permanent fix)", styles['OCBulletItem']))
+    elements.append(Paragraph("• Alternative: <font name='Courier'>python -m omni_cortex.dashboard</font>", styles['OCBulletItem']))
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: MCP tools not showing up in Claude Code</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "The MCP server registers when Claude Code starts. <b>Restart Claude Code</b> after running "
+        "<font name='Courier'>omni-cortex-setup</font>. The tools should appear in the available tools list.",
+        styles['OCBody']
+    ))
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: ModuleNotFoundError: No module named 'omni_cortex'</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "Multiple Python installations may be conflicting. Try:",
+        styles['OCBody']
+    ))
+    elements.append(Paragraph("• <font name='Courier'>pip install --force-reinstall omni-cortex</font>", styles['OCBulletItem']))
+    elements.append(Paragraph("• Ensure you're using the same Python that Claude Code uses", styles['OCBulletItem']))
+    elements.append(Paragraph("• Check <font name='Courier'>where python</font> (Windows) or <font name='Courier'>which python</font> (Mac/Linux)", styles['OCBulletItem']))
+
+    # === Dashboard Issues ===
+    elements.append(Spacer(1, 15))
+    elements.append(Paragraph("Dashboard Issues", styles['OCSectionTitle']))
+
+    elements.append(Paragraph(
+        "<b>Q: Dashboard won't start / port already in use</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "Port 8765 is occupied by another process. Use a different port:",
+        styles['OCBody']
+    ))
+    port_data = [
+        [Paragraph("<font name='Courier'>omni-cortex-dashboard --port 9000</font>", styles['OCCode'])],
+    ]
+    port_table = Table(port_data, colWidths=[5*inch])
+    port_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(port_table)
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: Dashboard shows 'Connection: Offline'</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "The backend API isn't running or encountered an error. Check your terminal for error messages. "
+        "Ensure uvicorn and fastapi are installed (they're auto-installed on first dashboard launch).",
+        styles['OCBody']
+    ))
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: 'Frontend not built' warning</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "The web UI files are missing. The API will work but the browser interface won't load. "
+        "Either reinstall omni-cortex or clone the repository and build the frontend manually.",
+        styles['OCBody']
+    ))
+
+    # === PAGE 2: Search & Storage Issues ===
+    elements.append(PageBreak())
+
+    elements.append(Paragraph("Search Issues", styles['OCSectionTitle']))
+
+    elements.append(Paragraph(
+        "<b>Q: Semantic search is very slow</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "The first semantic search downloads the embedding model (~90MB). This is a one-time download. "
+        "Subsequent searches are fast. You can pre-download by running any semantic search query.",
+        styles['OCBody']
+    ))
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: 'No memories found' but I know they exist</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "Check your filters - you may have type, status, or tag filters active. Try:",
+        styles['OCBody']
+    ))
+    elements.append(Paragraph("• Clear all filters in the dashboard", styles['OCBulletItem']))
+    elements.append(Paragraph("• Use <font name='Courier'>cortex_list_memories</font> without any filters", styles['OCBulletItem']))
+    elements.append(Paragraph("• Try keyword search instead of semantic search", styles['OCBulletItem']))
+    elements.append(Paragraph("• Check if you're viewing the correct project database", styles['OCBulletItem']))
+
+    elements.append(Spacer(1, 15))
+    elements.append(Paragraph("Storage Issues", styles['OCSectionTitle']))
+
+    elements.append(Paragraph(
+        "<b>Q: Where is my data stored?</b>",
+        styles['OCSubSection']
+    ))
+
+    storage_data = [
+        ['Location', 'Path', 'Purpose'],
+        ['Per-Project', '.omni-cortex/cortex.db', 'Project-specific memories'],
+        ['Global Index', '~/.omni-cortex/global.db', 'Cross-project search'],
+        ['Config', '.omni-cortex/config.yaml', 'Project settings'],
+    ]
+    storage_table = Table(storage_data, colWidths=[1.3*inch, 2.2*inch, 2*inch])
+    storage_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 1), (1, -1), 'Courier'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ('BACKGROUND', (0, 1), (-1, -1), WHITE),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(storage_table)
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: Can I backup my memories?</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "Yes! Use the export tool to create a full database backup:",
+        styles['OCBody']
+    ))
+    backup_data = [
+        [Paragraph("<font name='Courier'>cortex_export(format=\"sqlite\", output_path=\"/path/to/backup.db\")</font>",
+            ParagraphStyle('Code', fontName='Courier', fontSize=9))],
+    ]
+    backup_table = Table(backup_data, colWidths=[5*inch])
+    backup_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(backup_table)
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: Memories from one project not showing in another</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "This is by design - each project has isolated storage to keep memories organized. "
+        "Use <font name='Courier'>cortex_global_search</font> to search across all projects.",
+        styles['OCBody']
+    ))
+
+    # === Getting Help ===
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph("Getting Help", styles['OCSectionTitle']))
+
+    help_items = [
+        ("GitHub Issues", "github.com/AllCytes/Omni-Cortex/issues"),
+        ("Command Reference", "See OmniCortex_CommandReference.pdf for all tool parameters"),
+        ("Dashboard Guide", "See OmniCortex_DashboardGuide.pdf for UI features"),
+        ("Quick Start", "See OmniCortex_QuickStart.pdf for installation help"),
+    ]
+
+    for title, desc in help_items:
+        elements.append(Paragraph(f"• <b>{title}:</b> {desc}", styles['OCBulletItem']))
+
+    elements.append(Spacer(1, 20))
+    elements.append(create_callout_box(
+        "Still stuck? Open an issue on GitHub with your error message and system info",
+        ACCENT
+    ))
+
+    # Build PDF
+    doc.build(elements, onFirstPage=lambda c, d: header_footer(c, d, "Troubleshooting FAQ"),
+              onLaterPages=lambda c, d: header_footer(c, d, "Troubleshooting FAQ"))
+    print("Created: OmniCortex_TroubleshootingFAQ.pdf")
+
+
 if __name__ == "__main__":
     print("Creating OmniCortex Teaching Materials...")
     create_quickstart_pdf()
@@ -1080,4 +1298,5 @@ if __name__ == "__main__":
     create_philosophy_pdf()
     create_command_reference_pdf()
     create_dashboard_guide_pdf()
+    create_troubleshooting_pdf()
     print("\nAll PDFs created successfully!")
