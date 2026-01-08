@@ -496,3 +496,234 @@ def delete_memory(db_path: str, memory_id: str) -> bool:
     deleted = cursor.rowcount > 0
     conn.close()
     return deleted
+
+
+# --- Stats Functions for Dashboard Charts ---
+
+
+def get_activity_heatmap(db_path: str, days: int = 90) -> list[dict]:
+    """Get activity counts grouped by day for heatmap visualization."""
+    conn = get_connection(db_path)
+    query = """
+        SELECT date(timestamp) as date, COUNT(*) as count
+        FROM activities
+        WHERE timestamp >= date('now', ?)
+        GROUP BY date(timestamp)
+        ORDER BY date
+    """
+    cursor = conn.execute(query, (f'-{days} days',))
+    result = [{"date": row["date"], "count": row["count"]} for row in cursor.fetchall()]
+    conn.close()
+    return result
+
+
+def get_tool_usage(db_path: str, limit: int = 10) -> list[dict]:
+    """Get tool usage statistics with success rates."""
+    conn = get_connection(db_path)
+    query = """
+        SELECT
+            tool_name,
+            COUNT(*) as count,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as success_rate
+        FROM activities
+        WHERE tool_name IS NOT NULL AND tool_name != ''
+        GROUP BY tool_name
+        ORDER BY count DESC
+        LIMIT ?
+    """
+    cursor = conn.execute(query, (limit,))
+    result = [
+        {
+            "tool_name": row["tool_name"],
+            "count": row["count"],
+            "success_rate": round(row["success_rate"], 2) if row["success_rate"] else 1.0,
+        }
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return result
+
+
+def get_memory_growth(db_path: str, days: int = 30) -> list[dict]:
+    """Get memory creation over time with cumulative totals."""
+    conn = get_connection(db_path)
+    query = """
+        WITH daily_counts AS (
+            SELECT date(created_at) as date, COUNT(*) as count
+            FROM memories
+            WHERE created_at >= date('now', ?)
+            GROUP BY date(created_at)
+        )
+        SELECT
+            date,
+            count,
+            SUM(count) OVER (ORDER BY date) as cumulative
+        FROM daily_counts
+        ORDER BY date
+    """
+    cursor = conn.execute(query, (f'-{days} days',))
+    result = [
+        {"date": row["date"], "count": row["count"], "cumulative": row["cumulative"]}
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return result
+
+
+def get_recent_sessions(db_path: str, limit: int = 5) -> list[dict]:
+    """Get recent sessions with activity counts and memory counts."""
+    conn = get_connection(db_path)
+    query = """
+        SELECT
+            s.id,
+            s.project_path,
+            s.started_at,
+            s.ended_at,
+            s.summary,
+            COUNT(DISTINCT a.id) as activity_count
+        FROM sessions s
+        LEFT JOIN activities a ON a.session_id = s.id
+        GROUP BY s.id
+        ORDER BY s.started_at DESC
+        LIMIT ?
+    """
+    cursor = conn.execute(query, (limit,))
+    result = [
+        {
+            "id": row["id"],
+            "project_path": row["project_path"],
+            "started_at": row["started_at"],
+            "ended_at": row["ended_at"],
+            "summary": row["summary"],
+            "activity_count": row["activity_count"],
+        }
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return result
+
+
+def bulk_update_memory_status(db_path: str, memory_ids: list[str], status: str) -> int:
+    """Update status for multiple memories. Returns count updated."""
+    if not memory_ids:
+        return 0
+    conn = get_write_connection(db_path)
+    placeholders = ','.join('?' * len(memory_ids))
+    query = f"UPDATE memories SET status = ?, last_accessed = datetime('now') WHERE id IN ({placeholders})"
+    cursor = conn.execute(query, [status] + memory_ids)
+    conn.commit()
+    count = cursor.rowcount
+    conn.close()
+    return count
+
+
+def get_memories_needing_review(db_path: str, days_threshold: int = 30, limit: int = 50) -> list[Memory]:
+    """Get memories that haven't been accessed recently and may need review."""
+    conn = get_connection(db_path)
+    query = """
+        SELECT * FROM memories
+        WHERE last_accessed < date('now', ?)
+           OR last_accessed IS NULL
+        ORDER BY last_accessed ASC NULLS FIRST, importance_score DESC
+        LIMIT ?
+    """
+    cursor = conn.execute(query, (f'-{days_threshold} days', limit))
+
+    memories = []
+    for row in cursor.fetchall():
+        tags = parse_tags(row["tags"])
+        memories.append(
+            Memory(
+                id=row["id"],
+                content=row["content"],
+                context=row["context"],
+                type=row["type"],
+                status=row["status"] or "fresh",
+                importance_score=int(row["importance_score"] or 50),
+                access_count=row["access_count"] or 0,
+                created_at=datetime.fromisoformat(row["created_at"]),
+                last_accessed=datetime.fromisoformat(row["last_accessed"]) if row["last_accessed"] else None,
+                tags=tags,
+            )
+        )
+
+    conn.close()
+    return memories
+
+
+def get_relationships(db_path: str, memory_id: Optional[str] = None) -> list[dict]:
+    """Get memory relationships for graph visualization."""
+    conn = get_connection(db_path)
+
+    # Check if memory_relationships table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='memory_relationships'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return []
+
+    query = """
+        SELECT
+            r.source_id,
+            r.target_id,
+            r.relationship_type,
+            r.strength,
+            ms.content as source_content,
+            ms.type as source_type,
+            mt.content as target_content,
+            mt.type as target_type
+        FROM memory_relationships r
+        JOIN memories ms ON r.source_id = ms.id
+        JOIN memories mt ON r.target_id = mt.id
+    """
+
+    try:
+        if memory_id:
+            query += " WHERE r.source_id = ? OR r.target_id = ?"
+            cursor = conn.execute(query, (memory_id, memory_id))
+        else:
+            cursor = conn.execute(query)
+
+        result = [dict(row) for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"[Database] Error querying relationships: {e}")
+        result = []
+    finally:
+        conn.close()
+
+    return result
+
+
+def get_relationship_graph(db_path: str, center_id: Optional[str] = None, depth: int = 2) -> dict:
+    """Get graph data with nodes and edges for D3 visualization."""
+    relationships = get_relationships(db_path, center_id)
+
+    nodes = {}
+    edges = []
+
+    for rel in relationships:
+        # Add source node
+        if rel["source_id"] not in nodes:
+            nodes[rel["source_id"]] = {
+                "id": rel["source_id"],
+                "content": rel["source_content"][:100] if rel["source_content"] else "",
+                "type": rel["source_type"],
+            }
+        # Add target node
+        if rel["target_id"] not in nodes:
+            nodes[rel["target_id"]] = {
+                "id": rel["target_id"],
+                "content": rel["target_content"][:100] if rel["target_content"] else "",
+                "type": rel["target_type"],
+            }
+        # Add edge
+        edges.append({
+            "source": rel["source_id"],
+            "target": rel["target_id"],
+            "type": rel["relationship_type"],
+            "strength": rel["strength"] or 1.0,
+        })
+
+    return {"nodes": list(nodes.values()), "edges": edges}

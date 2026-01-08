@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { TYPE_COLORS } from '@/types'
 import { Database, Tag, TrendingUp, Eye } from 'lucide-vue-next'
+import ActivityHeatmap from '@/components/charts/ActivityHeatmap.vue'
+import ToolUsageChart from '@/components/charts/ToolUsageChart.vue'
+import MemoryGrowthChart from '@/components/charts/MemoryGrowthChart.vue'
 
 const store = useDashboardStore()
 
@@ -132,5 +135,10 @@ function getStatusColor(status: string): string {
         </span>
       </div>
     </div>
+
+    <!-- Charts Section -->
+    <ActivityHeatmap class="lg:col-span-3" />
+    <ToolUsageChart />
+    <MemoryGrowthChart class="md:col-span-2" />
   </div>
 </template>

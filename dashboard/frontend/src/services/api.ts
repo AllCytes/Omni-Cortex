@@ -169,3 +169,131 @@ export async function askAboutMemories(
   )
   return response.data
 }
+
+// --- Stats Endpoints for Charts ---
+
+export interface ActivityHeatmapEntry {
+  date: string
+  count: number
+}
+
+export interface ToolUsageEntry {
+  tool_name: string
+  count: number
+  success_rate: number
+}
+
+export interface MemoryGrowthEntry {
+  date: string
+  count: number
+  cumulative: number
+}
+
+export async function getActivityHeatmap(
+  dbPath: string,
+  days: number = 90
+): Promise<ActivityHeatmapEntry[]> {
+  const response = await api.get<ActivityHeatmapEntry[]>(
+    `/stats/activity-heatmap?project=${encodeURIComponent(dbPath)}&days=${days}`
+  )
+  return response.data
+}
+
+export async function getToolUsage(
+  dbPath: string,
+  limit: number = 10
+): Promise<ToolUsageEntry[]> {
+  const response = await api.get<ToolUsageEntry[]>(
+    `/stats/tool-usage?project=${encodeURIComponent(dbPath)}&limit=${limit}`
+  )
+  return response.data
+}
+
+export async function getMemoryGrowth(
+  dbPath: string,
+  days: number = 30
+): Promise<MemoryGrowthEntry[]> {
+  const response = await api.get<MemoryGrowthEntry[]>(
+    `/stats/memory-growth?project=${encodeURIComponent(dbPath)}&days=${days}`
+  )
+  return response.data
+}
+
+// --- Session Context ---
+
+export interface RecentSession {
+  id: string
+  project_path: string
+  started_at: string
+  ended_at: string | null
+  summary: string | null
+  activity_count: number
+}
+
+export async function getRecentSessions(
+  dbPath: string,
+  limit: number = 5
+): Promise<RecentSession[]> {
+  const response = await api.get<RecentSession[]>(
+    `/sessions/recent?project=${encodeURIComponent(dbPath)}&limit=${limit}`
+  )
+  return response.data
+}
+
+// --- Freshness Review ---
+
+export async function getMemoriesNeedingReview(
+  dbPath: string,
+  daysThreshold: number = 30,
+  limit: number = 50
+): Promise<Memory[]> {
+  const response = await api.get<Record<string, unknown>[]>(
+    `/memories/needs-review?project=${encodeURIComponent(dbPath)}&days_threshold=${daysThreshold}&limit=${limit}`
+  )
+  return response.data.map(normalizeMemory)
+}
+
+export async function bulkUpdateMemoryStatus(
+  dbPath: string,
+  memoryIds: string[],
+  status: string
+): Promise<{ updated_count: number; status: string }> {
+  const response = await api.post<{ updated_count: number; status: string }>(
+    `/memories/bulk-update-status?project=${encodeURIComponent(dbPath)}&status=${status}`,
+    memoryIds
+  )
+  return response.data
+}
+
+// --- Relationship Graph ---
+
+export interface GraphNode {
+  id: string
+  content: string
+  type: string
+}
+
+export interface GraphEdge {
+  source: string
+  target: string
+  type: string
+  strength: number
+}
+
+export interface RelationshipGraph {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
+
+export async function getRelationshipGraph(
+  dbPath: string,
+  centerId?: string,
+  depth: number = 2
+): Promise<RelationshipGraph> {
+  let url = `/relationships/graph?project=${encodeURIComponent(dbPath)}&depth=${depth}`
+  if (centerId) {
+    url += `&center_id=${encodeURIComponent(centerId)}`
+  }
+  const response = await api.get<RelationshipGraph>(url)
+  return response.data
+}

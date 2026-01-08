@@ -10,13 +10,16 @@ import MemoryDetail from '@/components/MemoryDetail.vue'
 import StatsPanel from '@/components/StatsPanel.vue'
 import ActivityTimeline from '@/components/ActivityTimeline.vue'
 import ChatPanel from '@/components/ChatPanel.vue'
+import SessionContextViewer from '@/components/SessionContextViewer.vue'
+import FreshnessReviewPanel from '@/components/FreshnessReviewPanel.vue'
+import RelationshipGraph from '@/components/RelationshipGraph.vue'
 
 const store = useDashboardStore()
 const { connect } = useWebSocket()
 useKeyboardShortcuts()
 
 const showFilters = ref(true)
-const activeTab = ref<'memories' | 'activity' | 'stats' | 'chat'>('memories')
+const activeTab = ref<'memories' | 'activity' | 'stats' | 'review' | 'graph' | 'chat'>('memories')
 
 onMounted(async () => {
   await store.loadProjects()
@@ -38,6 +41,11 @@ function handleNavigateToMemory(memoryId: string) {
     <AppHeader @toggle-filters="toggleFilters" />
 
     <main class="container mx-auto px-4 py-6">
+      <!-- Session Context (collapsible) -->
+      <div v-if="store.currentProject" class="mb-6">
+        <SessionContextViewer />
+      </div>
+
       <!-- Tab Navigation -->
       <div class="flex gap-2 mb-6">
         <button
@@ -72,6 +80,28 @@ function handleNavigateToMemory(memoryId: string) {
           ]"
         >
           Statistics
+        </button>
+        <button
+          @click="activeTab = 'review'"
+          :class="[
+            'px-4 py-2 rounded-lg font-medium transition-colors',
+            activeTab === 'review'
+              ? 'bg-amber-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+          ]"
+        >
+          Review
+        </button>
+        <button
+          @click="activeTab = 'graph'"
+          :class="[
+            'px-4 py-2 rounded-lg font-medium transition-colors',
+            activeTab === 'graph'
+              ? 'bg-purple-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+          ]"
+        >
+          Graph
         </button>
         <button
           @click="activeTab = 'chat'"
@@ -118,6 +148,16 @@ function handleNavigateToMemory(memoryId: string) {
       <!-- Stats Tab -->
       <div v-else-if="activeTab === 'stats'">
         <StatsPanel />
+      </div>
+
+      <!-- Review Tab -->
+      <div v-else-if="activeTab === 'review'" class="max-w-4xl mx-auto">
+        <FreshnessReviewPanel />
+      </div>
+
+      <!-- Graph Tab -->
+      <div v-else-if="activeTab === 'graph'">
+        <RelationshipGraph />
       </div>
 
       <!-- Chat Tab -->

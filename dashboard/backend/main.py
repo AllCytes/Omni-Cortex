@@ -1,5 +1,5 @@
 """FastAPI backend for Omni-Cortex Web Dashboard."""
-# Trigger reload for model changes
+# Trigger reload for Phase 2-3 routes
 
 import asyncio
 from contextlib import asynccontextmanager
@@ -13,14 +13,22 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from database import (
+    bulk_update_memory_status,
     delete_memory,
     get_activities,
+    get_activity_heatmap,
     get_all_tags,
     get_memories,
+    get_memories_needing_review,
     get_memory_by_id,
+    get_memory_growth,
     get_memory_stats,
+    get_recent_sessions,
+    get_relationship_graph,
+    get_relationships,
     get_sessions,
     get_timeline,
+    get_tool_usage,
     get_type_distribution,
     search_memories,
     update_memory,
@@ -288,6 +296,126 @@ async def list_sessions(
     return get_sessions(project, limit)
 
 
+# --- Stats Endpoints for Charts ---
+
+
+@app.get("/api/stats/activity-heatmap")
+async def get_activity_heatmap_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    days: int = 90,
+):
+    """Get activity counts grouped by day for heatmap visualization."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_activity_heatmap(project, days)
+
+
+@app.get("/api/stats/tool-usage")
+async def get_tool_usage_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    limit: int = 10,
+):
+    """Get tool usage statistics."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_tool_usage(project, limit)
+
+
+@app.get("/api/stats/memory-growth")
+async def get_memory_growth_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    days: int = 30,
+):
+    """Get memory creation over time."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_memory_growth(project, days)
+
+
+# --- Session Context Endpoints ---
+
+
+@app.get("/api/sessions/recent")
+async def get_recent_sessions_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    limit: int = 5,
+):
+    """Get recent sessions with summaries."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_recent_sessions(project, limit)
+
+
+# --- Freshness Review Endpoints ---
+
+
+@app.get("/api/memories/needs-review")
+async def get_memories_needing_review_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    days_threshold: int = 30,
+    limit: int = 50,
+):
+    """Get memories that may need freshness review."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_memories_needing_review(project, days_threshold, limit)
+
+
+@app.post("/api/memories/bulk-update-status")
+async def bulk_update_status_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    memory_ids: list[str] = [],
+    status: str = "fresh",
+):
+    """Update status for multiple memories at once."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    valid_statuses = ["fresh", "needs_review", "outdated", "archived"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+
+    count = bulk_update_memory_status(project, memory_ids, status)
+
+    # Notify connected clients
+    await manager.broadcast("memories_bulk_updated", {"count": count, "status": status})
+
+    return {"updated_count": count, "status": status}
+
+
+# --- Relationship Graph Endpoints ---
+
+
+@app.get("/api/relationships")
+async def get_relationships_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    memory_id: Optional[str] = None,
+):
+    """Get memory relationships for graph visualization."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_relationships(project, memory_id)
+
+
+@app.get("/api/relationships/graph")
+async def get_relationship_graph_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    center_id: Optional[str] = None,
+    depth: int = 2,
+):
+    """Get graph data centered on a memory with configurable depth."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_relationship_graph(project, center_id, depth)
+
+
 # --- Chat Endpoint ---
 
 
@@ -361,7 +489,7 @@ def run():
         host="0.0.0.0",
         port=8765,
         reload=True,
-        reload_dirs=["dashboard/backend"],
+        reload_dirs=[str(Path(__file__).parent)],
     )
 
 
