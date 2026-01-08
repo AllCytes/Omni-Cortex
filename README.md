@@ -170,8 +170,27 @@ context_depth: 3
 
 ## Documentation
 
-- [Tool Reference](docs/TOOLS.md) - Complete documentation for all 15 tools with examples
+- [Tool Reference](docs/TOOLS.md) - Complete documentation for all 18 tools with examples
 - [Configuration Guide](docs/CONFIGURATION.md) - Configuration options and troubleshooting
+- **Teaching Materials** (PDF):
+  - `docs/OmniCortex_QuickStart.pdf` - 3-page quick start guide
+  - `docs/OmniCortex_FeatureComparison.pdf` - Comparison with basic memory MCPs
+  - `docs/OmniCortex_Philosophy.pdf` - Design principles and inspiration
+  - `docs/OmniCortex_CommandReference.pdf` - All tools with parameters
+
+### Regenerating PDFs
+
+To regenerate the teaching material PDFs:
+
+```bash
+# Requires reportlab
+pip install reportlab
+
+# Generate all 4 PDFs
+python docs/create_pdfs.py
+```
+
+The PDFs use a light theme with blue/purple/green accents. Edit `docs/create_pdfs.py` to customize colors or content.
 
 ## Development
 

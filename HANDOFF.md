@@ -7,7 +7,7 @@
 
 ---
 
-## Current Status: v1.0.2 VERIFIED WORKING ✅
+## Current Status: v1.0.2 VERIFIED WORKING ✅ (Published to PyPI)
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
@@ -160,7 +160,7 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.0.5 - 66 tests passing, 18 tools, all phases complete.
+Status: v1.0.2 - 66 tests passing, 18 tools, all phases complete.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
 
 All planned features complete. Optional future work:
