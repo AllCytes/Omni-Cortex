@@ -168,6 +168,45 @@ auto_provide_context: true
 context_depth: 3
 ```
 
+## Web Dashboard
+
+A visual interface for browsing, searching, and managing your memories.
+
+![Dashboard Preview](docs/images/dashboard-preview.png)
+
+### Features
+- **Memory Browser**: View, search, filter, and edit memories
+- **Ask AI**: Chat with your memories using Gemini
+- **Real-time Updates**: WebSocket-based live sync
+- **Statistics**: Memory counts, types, tags distribution
+- **Project Switcher**: Switch between project databases
+
+### Quick Start
+
+```bash
+# Backend (requires Python 3.10+)
+cd dashboard/backend
+pip install -e .
+uvicorn main:app --host 0.0.0.0 --port 8765 --reload
+
+# Frontend (requires Node.js 18+)
+cd dashboard/frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 in your browser.
+
+### Ask AI Setup (Optional)
+
+To enable the "Ask AI" chat feature, set your Gemini API key:
+
+```bash
+export GEMINI_API_KEY=your_api_key_here
+```
+
+See [dashboard/README.md](dashboard/README.md) for full documentation.
+
 ## Documentation
 
 - [Tool Reference](docs/TOOLS.md) - Complete documentation for all 18 tools with examples
