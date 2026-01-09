@@ -2,6 +2,30 @@
 
 A universal memory system for Claude Code that combines activity logging with intelligent knowledge storage.
 
+## What Is This?
+
+**For AI/ML experts:** A dual-layer context system with activity provenance, hybrid semantic search (FTS5 + embeddings), and temporal importance decay. Think of it as **Git + Elasticsearch + a knowledge graph for AI context**.
+
+**For developers:** It gives Claude Code a persistent, searchable memory that auto-logs everything and gets smarter over time. Like a **senior developer's institutional knowledge**—searchable, organized, and always available.
+
+**For everyone:** It makes your AI assistant actually remember things. No more re-explaining your project every session.
+
+### Why Not Just Use CLAUDE.md or Basic Memory?
+
+| Feature | Claude Code | CLAUDE.md | Basic MCP | Omni-Cortex |
+|---------|:-----------:|:---------:|:---------:|:-----------:|
+| Persists between sessions | ❌ | ✅ | ✅ | ✅ |
+| Auto-logs all activity | ❌ | ❌ | ❌ | ✅ |
+| Hybrid search (keyword + semantic) | ❌ | ❌ | ❌ | ✅ |
+| Auto-categorizes memories | ❌ | ❌ | ❌ | ✅ |
+| Importance decay + access boosting | ❌ | ❌ | ❌ | ✅ |
+| Session history & context | ❌ | ❌ | ❌ | ✅ |
+| Memory relationships | ❌ | ❌ | ❌ | ✅ |
+| Cross-project search | ❌ | ❌ | ❌ | ✅ |
+| Visual dashboard | ❌ | ❌ | ❌ | ✅ |
+
+**The difference:** Basic solutions are like sticky notes. Omni-Cortex is like having a trusted long-term employee who remembers everything, files it automatically, and hands you exactly what you need.
+
 ## Features
 
 - **Zero Configuration**: Works out of the box - just install and run setup
