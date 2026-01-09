@@ -1063,7 +1063,7 @@ def create_dashboard_guide_pdf():
 
     elements.append(Spacer(1, 15))
     elements.append(create_callout_box(
-        "OmniCortex v1.0.5 | github.com/AllCytes/Omni-Cortex",
+        "OmniCortex v1.0.6 | github.com/AllCytes/Omni-Cortex",
         ACCENT
     ))
 
@@ -1161,6 +1161,23 @@ def create_troubleshooting_pdf():
     elements.append(Paragraph(
         "The backend API isn't running or encountered an error. Check your terminal for error messages. "
         "Ensure uvicorn and fastapi are installed (they're auto-installed on first dashboard launch).",
+        styles['OCBody']
+    ))
+
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(
+        "<b>Q: How do I read the dashboard logs?</b>",
+        styles['OCSubSection']
+    ))
+    elements.append(Paragraph(
+        "The dashboard uses structured logging for easy debugging:",
+        styles['OCBody']
+    ))
+    elements.append(Paragraph("• <b>[SUCCESS]</b> - Operation completed: <font name='Courier' size='8'>[SUCCESS] /api/memories - count=150, time_ms=45</font>", styles['OCBulletItem']))
+    elements.append(Paragraph("• <b>[ERROR]</b> - Something failed: <font name='Courier' size='8'>[ERROR] /api/endpoint - Exception: TypeError</font>", styles['OCBulletItem']))
+    elements.append(Paragraph("• Error logs include full tracebacks for debugging", styles['OCBulletItem']))
+    elements.append(Paragraph(
+        "Look for <font name='Courier'>[ERROR]</font> lines in your terminal to diagnose issues.",
         styles['OCBody']
     ))
 
