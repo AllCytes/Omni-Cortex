@@ -58,9 +58,9 @@ export function useKeyboardShortcuts() {
         break
 
       case '?':
-        // Show keyboard shortcuts help
+        // Show help modal
         e.preventDefault()
-        showShortcutsHelp()
+        showHelp()
         break
     }
 
@@ -102,20 +102,9 @@ export function useKeyboardShortcuts() {
     }, 50)
   }
 
-  function showShortcutsHelp() {
-    const shortcuts = `
-Keyboard Shortcuts:
-─────────────────────
-/         Focus search
-Esc       Clear selection/filters
-j/k       Navigate memories
-Enter     Select first memory
-r         Refresh data
-1-9       Filter by type
-?         Show this help
-    `.trim()
-
-    alert(shortcuts)
+  function showHelp() {
+    // Dispatch custom event to open help modal
+    window.dispatchEvent(new CustomEvent('show-help'))
   }
 
   onMounted(() => {
@@ -127,6 +116,6 @@ r         Refresh data
   })
 
   return {
-    showShortcutsHelp,
+    showHelp,
   }
 }

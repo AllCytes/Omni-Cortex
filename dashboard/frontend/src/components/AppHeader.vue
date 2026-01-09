@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useTheme } from '@/composables/useTheme'
-import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw, Download } from 'lucide-vue-next'
+import { useElapsedTime } from '@/composables/useElapsedTime'
+import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw, Download, HelpCircle } from 'lucide-vue-next'
 import ProjectSwitcher from './ProjectSwitcher.vue'
 import ExportPanel from './ExportPanel.vue'
+import HelpModal from './HelpModal.vue'
 
 const emit = defineEmits<{
   (e: 'toggle-filters'): void
@@ -16,7 +18,13 @@ const { theme, toggleTheme } = useTheme()
 const searchQuery = ref('')
 const showProjectSwitcher = ref(false)
 const showExportPanel = ref(false)
+const showHelp = ref(false)
 const isRefreshing = ref(false)
+
+// Live elapsed time since last update
+const { formattedElapsed: lastUpdatedText } = useElapsedTime(
+  () => store.lastUpdated
+)
 
 const totalMemories = computed(() => store.stats?.total_count ?? 0)
 
@@ -30,15 +38,6 @@ const themeLabel = computed(() => {
   if (theme.value === 'light') return 'Light'
   if (theme.value === 'dark') return 'Dark'
   return 'System'
-})
-
-const lastUpdatedText = computed(() => {
-  if (!store.lastUpdated) return ''
-  const diff = Date.now() - store.lastUpdated
-  if (diff < 5000) return 'Just now'
-  if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  return new Date(store.lastUpdated).toLocaleTimeString()
 })
 
 function handleSearch() {
@@ -61,14 +60,22 @@ async function handleRefresh() {
   }, 500)
 }
 
-// Initialize theme on mount
+// Listen for help modal trigger from keyboard shortcuts
+function handleShowHelp() {
+  showHelp.value = true
+}
+
 onMounted(() => {
-  // Theme is initialized by the composable
+  window.addEventListener('show-help', handleShowHelp)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('show-help', handleShowHelp)
 })
 </script>
 
 <template>
-  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+  <header class="app-header bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
     <div class="container mx-auto px-4 py-3">
       <div class="flex items-center justify-between gap-4">
         <!-- Logo & Title -->
@@ -80,7 +87,7 @@ onMounted(() => {
         </div>
 
         <!-- Project Switcher -->
-        <div class="relative">
+        <div class="project-switcher relative">
           <button
             @click="showProjectSwitcher = !showProjectSwitcher"
             class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -108,7 +115,7 @@ onMounted(() => {
               @keydown="handleKeydown"
               type="text"
               placeholder="Search memories... (Enter to search, Esc to clear)"
-              class="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border-none focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              class="search-input w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border-none focus:ring-2 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
         </div>
@@ -152,8 +159,18 @@ onMounted(() => {
             <component :is="themeIcon" class="w-5 h-5" />
           </button>
 
+          <!-- Help Button -->
+          <button
+            @click="showHelp = true"
+            class="help-button p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Help & Shortcuts (?)"
+          >
+            <HelpCircle class="w-5 h-5" />
+          </button>
+
           <!-- Connection Status -->
           <div
+            class="live-status"
             :class="[
               'flex items-center gap-1 px-2 py-1 rounded-full text-sm',
               store.isConnected
@@ -162,6 +179,11 @@ onMounted(() => {
             ]"
             :title="lastUpdatedText ? `Last updated: ${lastUpdatedText}` : ''"
           >
+            <!-- Pulsing dot when connected -->
+            <span v-if="store.isConnected" class="relative flex h-2 w-2 mr-1">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
             <Wifi v-if="store.isConnected" class="w-4 h-4" />
             <WifiOff v-else class="w-4 h-4" />
             <span>{{ store.isConnected ? 'Live' : 'Offline' }}</span>
@@ -175,5 +197,8 @@ onMounted(() => {
 
     <!-- Export Panel Modal -->
     <ExportPanel v-if="showExportPanel" @close="showExportPanel = false" />
+
+    <!-- Help Modal -->
+    <HelpModal v-if="showHelp" @close="showHelp = false" />
   </header>
 </template>

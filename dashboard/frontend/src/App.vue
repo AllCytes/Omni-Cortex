@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
+import { useOnboardingStore } from '@/stores/onboardingStore'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import AppHeader from '@/components/AppHeader.vue'
@@ -13,8 +14,10 @@ import ChatPanel from '@/components/ChatPanel.vue'
 import SessionContextViewer from '@/components/SessionContextViewer.vue'
 import FreshnessReviewPanel from '@/components/FreshnessReviewPanel.vue'
 import RelationshipGraph from '@/components/RelationshipGraph.vue'
+import OnboardingOverlay from '@/components/OnboardingOverlay.vue'
 
 const store = useDashboardStore()
+const onboardingStore = useOnboardingStore()
 const { connect } = useWebSocket()
 useKeyboardShortcuts()
 
@@ -24,6 +27,14 @@ const activeTab = ref<'memories' | 'activity' | 'stats' | 'review' | 'graph' | '
 onMounted(async () => {
   await store.loadProjects()
   connect()
+
+  // Start onboarding for first-time users
+  if (!onboardingStore.hasCompletedOnboarding) {
+    // Small delay to ensure UI is rendered
+    setTimeout(() => {
+      onboardingStore.startOnboarding()
+    }, 500)
+  }
 })
 
 function toggleFilters() {
@@ -47,7 +58,7 @@ function handleNavigateToMemory(_memoryId: string) {
       </div>
 
       <!-- Tab Navigation -->
-      <div class="flex gap-2 mb-6">
+      <div class="tab-navigation flex gap-2 mb-6">
         <button
           @click="activeTab = 'memories'"
           :class="[
@@ -127,7 +138,7 @@ function handleNavigateToMemory(_memoryId: string) {
         </aside>
 
         <!-- Memory List -->
-        <div class="flex-1 min-w-0">
+        <div class="memory-browser flex-1 min-w-0">
           <MemoryBrowser />
         </div>
 
@@ -165,5 +176,8 @@ function handleNavigateToMemory(_memoryId: string) {
         <ChatPanel @navigate-to-memory="handleNavigateToMemory" />
       </div>
     </main>
+
+    <!-- Onboarding Overlay -->
+    <OnboardingOverlay />
   </div>
 </template>
