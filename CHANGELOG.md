@@ -2,6 +2,27 @@
 
 All notable changes to OmniCortex will be documented in this file.
 
+## [1.0.8] - 2026-01-08
+
+### Added
+- **Dashboard UX Enhancements**
+  - **Live Update Timer**: Real-time elapsed time display ("Just now", "5s ago", etc.) with Page Visibility API optimization
+  - **Onboarding Flow**: 7-step guided tour for first-time users with spotlight overlay
+  - **Help Guide System**: Modal with keyboard shortcuts, feature overview, and tour replay option
+  - Pulsing green dot indicator when connected to show live status
+
+### New Components
+- `useElapsedTime.ts`: Composable for reactive elapsed time formatting
+- `onboardingStore.ts`: Pinia store for tour state management
+- `OnboardingOverlay.vue`: Spotlight tour component with keyboard navigation (Arrow keys, Enter, Esc)
+- `HelpModal.vue`: Tabbed help dialog (Shortcuts, Features, About)
+
+## [1.0.7] - 2026-01-08
+
+### Added
+- Storage Architecture PDF explaining SQLite design decision
+- Ask AI upgraded to Gemini 3 Flash model
+
 ## [1.0.6] - 2026-01-08
 
 ### Added
