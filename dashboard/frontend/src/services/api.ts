@@ -158,16 +158,54 @@ export async function getChatStatus(_dbPath: string): Promise<{ available: boole
   return response.data
 }
 
+// AbortController for cancelling chat requests
+let chatAbortController: AbortController | null = null
+
+export function cancelChatRequest(): void {
+  if (chatAbortController) {
+    chatAbortController.abort()
+    chatAbortController = null
+  }
+}
+
 export async function askAboutMemories(
   dbPath: string,
   question: string,
   maxMemories: number = 10
 ): Promise<ChatResponse> {
-  const response = await api.post<ChatResponse>(
-    `/chat?project=${encodeURIComponent(dbPath)}`,
-    { question, max_memories: maxMemories }
-  )
-  return response.data
+  // Cancel any existing request
+  cancelChatRequest()
+
+  // Create new abort controller
+  chatAbortController = new AbortController()
+
+  try {
+    const response = await api.post<ChatResponse>(
+      `/chat?project=${encodeURIComponent(dbPath)}`,
+      { question, max_memories: maxMemories },
+      {
+        timeout: 120000, // 2 minutes for AI responses
+        signal: chatAbortController.signal,
+      }
+    )
+    return response.data
+  } catch (error) {
+    if (axios.isCancel(error)) {
+      throw new Error('Request cancelled')
+    }
+    // Provide more helpful error messages
+    if (error instanceof Error) {
+      if (error.message.includes('timeout')) {
+        throw new Error('The AI is taking too long to respond. Please try a simpler question or try again later.')
+      }
+      if (error.message.includes('Network Error')) {
+        throw new Error('Network error. Please check your connection and try again.')
+      }
+    }
+    throw error
+  } finally {
+    chatAbortController = null
+  }
 }
 
 // --- Stats Endpoints for Charts ---
