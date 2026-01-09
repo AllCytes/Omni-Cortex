@@ -1063,7 +1063,7 @@ def create_dashboard_guide_pdf():
 
     elements.append(Spacer(1, 15))
     elements.append(create_callout_box(
-        "OmniCortex v1.0.6 | github.com/AllCytes/Omni-Cortex",
+        "OmniCortex | github.com/AllCytes/Omni-Cortex",
         ACCENT
     ))
 
