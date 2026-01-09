@@ -6,6 +6,15 @@ export interface Project {
   last_modified: string | null
   memory_count: number
   is_global: boolean
+  is_favorite: boolean
+  is_registered: boolean
+  display_name: string | null
+}
+
+export interface ProjectConfig {
+  scan_directories: string[]
+  registered_count: number
+  favorites_count: number
 }
 
 // Memory types

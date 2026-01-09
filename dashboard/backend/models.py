@@ -15,6 +15,31 @@ class ProjectInfo(BaseModel):
     last_modified: Optional[datetime] = None
     memory_count: int = 0
     is_global: bool = False
+    is_favorite: bool = False
+    is_registered: bool = False
+    display_name: Optional[str] = None
+
+
+class ScanDirectory(BaseModel):
+    """A directory being scanned for projects."""
+
+    path: str
+    project_count: int = 0
+
+
+class ProjectRegistration(BaseModel):
+    """Request to register a project."""
+
+    path: str
+    display_name: Optional[str] = None
+
+
+class ProjectConfigResponse(BaseModel):
+    """Response with project configuration."""
+
+    scan_directories: list[str]
+    registered_count: int
+    favorites_count: int
 
 
 class Memory(BaseModel):

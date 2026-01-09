@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Project, Memory, MemoryStats, MemoryUpdate, Activity, Session, TimelineEntry, FilterState } from '@/types'
+import type { Project, Memory, MemoryStats, MemoryUpdate, Activity, Session, TimelineEntry, FilterState, ProjectConfig } from '@/types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -296,4 +296,41 @@ export async function getRelationshipGraph(
   }
   const response = await api.get<RelationshipGraph>(url)
   return response.data
+}
+
+// --- Project Management ---
+
+export async function getProjectConfig(): Promise<ProjectConfig> {
+  const response = await api.get<ProjectConfig>('/projects/config')
+  return response.data
+}
+
+export async function registerProject(path: string, displayName?: string): Promise<void> {
+  await api.post('/projects/register', { path, display_name: displayName })
+}
+
+export async function unregisterProject(path: string): Promise<void> {
+  await api.delete('/projects/register', { params: { path } })
+}
+
+export async function toggleFavorite(path: string): Promise<boolean> {
+  const response = await api.post<{ is_favorite: boolean }>(
+    '/projects/favorite',
+    null,
+    { params: { path } }
+  )
+  return response.data.is_favorite
+}
+
+export async function addScanDirectory(directory: string): Promise<void> {
+  await api.post('/projects/scan-directories', null, { params: { directory } })
+}
+
+export async function removeScanDirectory(directory: string): Promise<void> {
+  await api.delete('/projects/scan-directories', { params: { directory } })
+}
+
+export async function refreshProjects(): Promise<number> {
+  const response = await api.post<{ count: number }>('/projects/refresh')
+  return response.data.count
 }

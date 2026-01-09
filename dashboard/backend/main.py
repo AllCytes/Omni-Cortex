@@ -39,7 +39,15 @@ from database import (
     update_memory,
 )
 from logging_config import log_success, log_error
-from models import ChatRequest, ChatResponse, FilterParams, MemoryUpdate, ProjectInfo
+from models import ChatRequest, ChatResponse, FilterParams, MemoryUpdate, ProjectInfo, ProjectRegistration
+from project_config import (
+    load_config,
+    add_registered_project,
+    remove_registered_project,
+    toggle_favorite,
+    add_scan_directory,
+    remove_scan_directory,
+)
 from project_scanner import scan_projects
 from websocket_manager import manager
 import chat_service
@@ -145,6 +153,70 @@ setup_static_files()
 async def list_projects():
     """List all discovered omni-cortex project databases."""
     return scan_projects()
+
+
+# --- Project Management Endpoints ---
+
+
+@app.get("/api/projects/config")
+async def get_project_config():
+    """Get project configuration (scan dirs, counts)."""
+    config = load_config()
+    return {
+        "scan_directories": config.scan_directories,
+        "registered_count": len(config.registered_projects),
+        "favorites_count": len(config.favorites),
+    }
+
+
+@app.post("/api/projects/register")
+async def register_project(body: ProjectRegistration):
+    """Manually register a project by path."""
+    success = add_registered_project(body.path, body.display_name)
+    if not success:
+        raise HTTPException(400, "Invalid path or already registered")
+    return {"success": True}
+
+
+@app.delete("/api/projects/register")
+async def unregister_project(path: str = Query(..., description="Project path to unregister")):
+    """Remove a registered project."""
+    success = remove_registered_project(path)
+    if not success:
+        raise HTTPException(404, "Project not found")
+    return {"success": True}
+
+
+@app.post("/api/projects/favorite")
+async def toggle_project_favorite(path: str = Query(..., description="Project path to toggle favorite")):
+    """Toggle favorite status for a project."""
+    is_favorite = toggle_favorite(path)
+    return {"is_favorite": is_favorite}
+
+
+@app.post("/api/projects/scan-directories")
+async def add_scan_dir(directory: str = Query(..., description="Directory path to add")):
+    """Add a directory to auto-scan list."""
+    success = add_scan_directory(directory)
+    if not success:
+        raise HTTPException(400, "Invalid directory or already added")
+    return {"success": True}
+
+
+@app.delete("/api/projects/scan-directories")
+async def remove_scan_dir(directory: str = Query(..., description="Directory path to remove")):
+    """Remove a directory from auto-scan list."""
+    success = remove_scan_directory(directory)
+    if not success:
+        raise HTTPException(404, "Directory not found")
+    return {"success": True}
+
+
+@app.post("/api/projects/refresh")
+async def refresh_projects():
+    """Force rescan of all project directories."""
+    projects = scan_projects()
+    return {"count": len(projects)}
 
 
 @app.get("/api/memories")

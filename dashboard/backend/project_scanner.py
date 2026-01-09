@@ -1,11 +1,11 @@
 """Scanner to discover all omni-cortex databases on the system."""
 
-import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
 from models import ProjectInfo
+from project_config import load_config
 
 
 def get_global_db_path() -> Path:
@@ -65,54 +65,70 @@ def scan_projects() -> list[ProjectInfo]:
     projects: list[ProjectInfo] = []
     seen_paths: set[str] = set()
 
+    # Load user config
+    config = load_config()
+
     # 1. Add global index if exists
     global_path = get_global_db_path()
     if global_path.exists():
         stat = global_path.stat()
+        global_project_path = str(global_path.parent)
         projects.append(
             ProjectInfo(
                 name="Global Index",
-                path=str(global_path.parent),
+                path=global_project_path,
                 db_path=str(global_path),
                 last_modified=datetime.fromtimestamp(stat.st_mtime),
                 memory_count=get_memory_count(global_path),
                 is_global=True,
+                is_favorite=global_project_path in config.favorites,
             )
         )
         seen_paths.add(str(global_path))
 
-    # 2. Scan common project directories
-    scan_dirs = [
-        Path("D:/Projects"),
-        Path.home() / "projects",
-        Path.home() / "Projects",
-        Path.home() / "code",
-        Path.home() / "Code",
-        Path.home() / "dev",
-        Path.home() / "Dev",
-        Path.home() / "src",
-        Path.home() / "workspace",
-    ]
-
-    for scan_dir in scan_dirs:
-        if scan_dir.exists():
-            for db_path in scan_directory_for_cortex(scan_dir):
+    # 2. Use CONFIGURABLE scan directories
+    for scan_dir in config.scan_directories:
+        scan_path = Path(scan_dir).expanduser()
+        if scan_path.exists():
+            for db_path in scan_directory_for_cortex(scan_path):
                 if str(db_path) not in seen_paths:
                     project_dir = db_path.parent.parent
                     stat = db_path.stat()
+                    project_path = str(project_dir)
                     projects.append(
                         ProjectInfo(
                             name=project_dir.name,
-                            path=str(project_dir),
+                            path=project_path,
                             db_path=str(db_path),
                             last_modified=datetime.fromtimestamp(stat.st_mtime),
                             memory_count=get_memory_count(db_path),
                             is_global=False,
+                            is_favorite=project_path in config.favorites,
                         )
                     )
                     seen_paths.add(str(db_path))
 
-    # 3. Add paths from global db that we haven't seen
+    # 3. Add REGISTERED projects (manual additions)
+    for reg in config.registered_projects:
+        db_path = Path(reg.path) / ".omni-cortex" / "cortex.db"
+        if db_path.exists() and str(db_path) not in seen_paths:
+            stat = db_path.stat()
+            projects.append(
+                ProjectInfo(
+                    name=Path(reg.path).name,
+                    path=reg.path,
+                    db_path=str(db_path),
+                    last_modified=datetime.fromtimestamp(stat.st_mtime),
+                    memory_count=get_memory_count(db_path),
+                    is_global=False,
+                    is_favorite=reg.path in config.favorites,
+                    is_registered=True,
+                    display_name=reg.display_name,
+                )
+            )
+            seen_paths.add(str(db_path))
+
+    # 4. Add paths from global db that we haven't seen
     for project_path in get_projects_from_global_db():
         db_path = Path(project_path) / ".omni-cortex" / "cortex.db"
         if db_path.exists() and str(db_path) not in seen_paths:
@@ -125,12 +141,19 @@ def scan_projects() -> list[ProjectInfo]:
                     last_modified=datetime.fromtimestamp(stat.st_mtime),
                     memory_count=get_memory_count(db_path),
                     is_global=False,
+                    is_favorite=project_path in config.favorites,
                 )
             )
             seen_paths.add(str(db_path))
 
-    # Sort by last_modified (most recent first), with global always first
-    projects.sort(key=lambda p: (not p.is_global, -(p.last_modified.timestamp() if p.last_modified else 0)))
+    # Sort: favorites first, then by last_modified (most recent first), with global always first
+    projects.sort(
+        key=lambda p: (
+            not p.is_global,
+            not p.is_favorite,
+            -(p.last_modified.timestamp() if p.last_modified else 0),
+        )
+    )
 
     return projects
 

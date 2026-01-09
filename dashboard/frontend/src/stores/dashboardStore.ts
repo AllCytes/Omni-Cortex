@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Project, Memory, MemoryStats, MemoryUpdate, FilterState, Activity, TimelineEntry } from '@/types'
+import type { Project, Memory, MemoryStats, MemoryUpdate, FilterState, Activity, TimelineEntry, ProjectConfig } from '@/types'
 import * as api from '@/services/api'
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -13,6 +13,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const activities = ref<Activity[]>([])
   const timeline = ref<TimelineEntry[]>([])
   const tags = ref<Array<{ name: string; count: number }>>([])
+  const projectConfig = ref<ProjectConfig | null>(null)
 
   const filters = ref<FilterState>({
     memory_type: null,
@@ -44,6 +45,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     error.value = null
     try {
       projects.value = await api.getProjects()
+      // Also load project config
+      await loadProjectConfig()
       // Auto-select first project if none selected
       if (!currentProject.value && projects.value.length > 0) {
         await switchProject(projects.value[0])
@@ -53,6 +56,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
       console.error('Failed to load projects:', e)
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function loadProjectConfig() {
+    try {
+      projectConfig.value = await api.getProjectConfig()
+    } catch (e) {
+      console.error('Failed to load project config:', e)
     }
   }
 
@@ -267,6 +278,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     // State
     projects,
     currentProject,
+    projectConfig,
     memories,
     selectedMemory,
     stats,
@@ -285,6 +297,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
     // Actions
     loadProjects,
+    loadProjectConfig,
     switchProject,
     loadMemories,
     loadMore,

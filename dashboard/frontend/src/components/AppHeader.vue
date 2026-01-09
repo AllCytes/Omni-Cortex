@@ -7,6 +7,7 @@ import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw,
 import ProjectSwitcher from './ProjectSwitcher.vue'
 import ExportPanel from './ExportPanel.vue'
 import HelpModal from './HelpModal.vue'
+import ProjectManagementModal from './ProjectManagementModal.vue'
 
 const emit = defineEmits<{
   (e: 'toggle-filters'): void
@@ -19,6 +20,7 @@ const searchQuery = ref('')
 const showProjectSwitcher = ref(false)
 const showExportPanel = ref(false)
 const showHelp = ref(false)
+const showProjectManagement = ref(false)
 const isRefreshing = ref(false)
 
 // Live elapsed time since last update
@@ -58,6 +60,11 @@ async function handleRefresh() {
   setTimeout(() => {
     isRefreshing.value = false
   }, 500)
+}
+
+function openProjectManagement() {
+  showProjectSwitcher.value = false
+  showProjectManagement.value = true
 }
 
 // Listen for help modal trigger from keyboard shortcuts
@@ -102,6 +109,7 @@ onUnmounted(() => {
           <ProjectSwitcher
             v-if="showProjectSwitcher"
             @close="showProjectSwitcher = false"
+            @openManagement="openProjectManagement"
           />
         </div>
 
@@ -200,5 +208,8 @@ onUnmounted(() => {
 
     <!-- Help Modal -->
     <HelpModal v-if="showHelp" @close="showHelp = false" />
+
+    <!-- Project Management Modal -->
+    <ProjectManagementModal v-if="showProjectManagement" @close="showProjectManagement = false" />
   </header>
 </template>

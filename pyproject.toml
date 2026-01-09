@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "omni-cortex"
-version = "1.0.8"
+version = "1.0.9"
 description = "Universal Memory MCP for Claude Code - dual-layer activity logging and knowledge storage"
 readme = "README.md"
 license = "MIT"

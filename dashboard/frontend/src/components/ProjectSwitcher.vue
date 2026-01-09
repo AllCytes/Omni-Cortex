@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
-import { Globe, Folder, Clock } from 'lucide-vue-next'
+import { Globe, Folder, Clock, Star, Settings } from 'lucide-vue-next'
 import type { Project } from '@/types'
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'openManagement'): void
 }>()
 
 const store = useDashboardStore()
@@ -41,8 +42,17 @@ onUnmounted(() => {
 <template>
   <div class="project-switcher absolute top-full left-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto animate-fade-in z-50">
     <div class="p-2">
-      <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 py-2 uppercase">
-        Projects
+      <div class="flex items-center justify-between px-3 py-2">
+        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+          Projects
+        </span>
+        <button
+          @click.stop="emit('openManagement')"
+          class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-1"
+        >
+          <Settings class="w-3 h-3" />
+          Manage
+        </button>
       </div>
 
       <div v-if="store.projects.length === 0" class="px-3 py-4 text-center text-gray-500">
@@ -54,12 +64,18 @@ onUnmounted(() => {
         :key="project.db_path"
         @click="selectProject(project)"
         :class="[
-          'w-full px-3 py-2 rounded-lg text-left transition-colors flex items-start gap-3',
+          'w-full px-3 py-2 rounded-lg text-left transition-colors flex items-start gap-3 relative',
           store.currentProject?.db_path === project.db_path
             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
             : 'hover:bg-gray-100 dark:hover:bg-gray-700'
         ]"
       >
+        <!-- Favorite indicator -->
+        <Star
+          v-if="project.is_favorite"
+          class="w-3 h-3 text-yellow-500 fill-yellow-500 absolute top-2 right-2"
+        />
+
         <!-- Icon -->
         <div class="flex-shrink-0 mt-0.5">
           <Globe v-if="project.is_global" class="w-5 h-5 text-purple-500" />
@@ -68,7 +84,7 @@ onUnmounted(() => {
 
         <!-- Content -->
         <div class="flex-1 min-w-0">
-          <div class="font-medium truncate">{{ project.name }}</div>
+          <div class="font-medium truncate">{{ project.display_name || project.name }}</div>
           <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
             {{ project.path }}
           </div>
