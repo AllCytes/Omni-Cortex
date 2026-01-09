@@ -14,25 +14,95 @@ Integrate Google's Nano Banana Pro (gemini-3-pro-image-preview) image generation
 
 ## Technical Architecture
 
+### Available Models
+
+| Model | Codename | Model ID | Best For |
+|-------|----------|----------|----------|
+| **Nano Banana Pro** | Gemini 3 Pro Image | `gemini-3-pro-image-preview` | Professional asset production, complex instructions, up to 4K |
+| **Nano Banana** | Gemini 2.5 Flash Image | `gemini-2.5-flash-image` | Speed/efficiency, high-volume, 1024px max |
+
 ### Model Configuration
 
 ```python
-# Model ID for image generation
+# Primary model for professional asset production
 MODEL_ID = "gemini-3-pro-image-preview"
 
-# Pricing: $2 (Text Input) / $0.134 (Image Output per image)
-# Context Window: 65k input / 32k output
-# Knowledge Cutoff: Jan 2025
+# Alternative for speed/efficiency
+FLASH_MODEL_ID = "gemini-2.5-flash-image"
+
+# Pricing (Nano Banana Pro):
+# - Text input: $30 per 1M tokens
+# - Image output: $30 per 1M tokens (1120 tokens per image for 1K/2K, 2000 for 4K)
 ```
 
-### Key API Features (from Gemini 3 docs)
+### Key API Features
 
-1. **Thought Signatures**: Required for conversational editing - must preserve `thoughtSignature` between turns
-2. **Image Config Options**:
-   - `aspect_ratio`: "1:1", "16:9", "9:16", "4:3", "3:4"
-   - `image_size`: "2K", "4K"
-3. **Google Search Grounding**: Can use real-time data for generation
-4. **Conversational Editing**: Multi-turn image editing via thought signatures
+1. **Thinking Mode**: Model uses reasoning process to refine composition before generating (enabled by default, cannot be disabled)
+   - Generates up to 2 interim "thought images" (visible in backend, not charged)
+   - Last image in Thinking is the final rendered image
+
+2. **Thought Signatures**: Required for multi-turn conversational editing
+   - All `inline_data` parts with image mimetype have signatures
+   - First non-thought text part has signature
+   - Thoughts themselves do NOT have signatures
+   - **SDK Chat feature handles signatures automatically**
+
+3. **Up to 14 Reference Images** (Nano Banana Pro):
+   - Up to 6 images of objects with high-fidelity
+   - Up to 5 images of humans for character consistency
+   - Flash model: up to 3 input images
+
+4. **Google Search Grounding**: Generate images based on real-time data (weather, sports scores, current events)
+   - Returns `groundingMetadata` with `searchEntryPoint` and `groundingChunks`
+
+5. **High-Resolution Output**: 1K, 2K, and 4K generation (uppercase 'K' required)
+
+6. **Advanced Text Rendering**: Legible, stylized text for infographics, menus, diagrams
+
+7. **SynthID Watermark**: All generated images include invisible watermark
+
+### Aspect Ratios & Resolution Tables
+
+**Nano Banana Pro (gemini-3-pro-image-preview)**
+
+| Aspect | 1K Resolution | 2K Resolution | 4K Resolution | 1K/2K Tokens | 4K Tokens |
+|--------|---------------|---------------|---------------|--------------|-----------|
+| 1:1    | 1024x1024     | 2048x2048     | 4096x4096     | 1120         | 2000      |
+| 2:3    | 848x1264      | 1696x2528     | 3392x5056     | 1120         | 2000      |
+| 3:2    | 1264x848      | 2528x1696     | 5056x3392     | 1120         | 2000      |
+| 3:4    | 896x1200      | 1792x2400     | 3584x4800     | 1120         | 2000      |
+| 4:3    | 1200x896      | 2400x1792     | 4800x3584     | 1120         | 2000      |
+| 4:5    | 928x1152      | 1856x2304     | 3712x4608     | 1120         | 2000      |
+| 5:4    | 1152x928      | 2304x1856     | 4608x3712     | 1120         | 2000      |
+| 9:16   | 768x1376      | 1536x2752     | 3072x5504     | 1120         | 2000      |
+| 16:9   | 1376x768      | 2752x1536     | 5504x3072     | 1120         | 2000      |
+| 21:9   | 1584x672      | 3168x1344     | 6336x2688     | 1120         | 2000      |
+
+**Nano Banana (gemini-2.5-flash-image)** - All 1290 tokens
+
+| Aspect | Resolution |
+|--------|------------|
+| 1:1    | 1024x1024  |
+| 2:3    | 832x1248   |
+| 3:2    | 1248x832   |
+| 3:4    | 864x1184   |
+| 4:3    | 1184x864   |
+| 4:5    | 896x1152   |
+| 5:4    | 1152x896   |
+| 9:16   | 768x1344   |
+| 16:9   | 1344x768   |
+| 21:9   | 1536x672   |
+
+### Supported Languages (Best Performance)
+
+EN, ar-EG, de-DE, es-MX, fr-FR, hi-IN, id-ID, it-IT, ja-JP, ko-KR, pt-BR, ru-RU, ua-UA, vi-VN, zh-CN
+
+### Limitations
+
+- No audio or video inputs supported
+- May not follow exact number of requested images
+- For text in images: generate text first, then ask for image with the text
+- Image output count not guaranteed to match request
 
 ## Implementation Plan
 
@@ -581,6 +651,139 @@ Turn 3: User → "Add a timeline at the bottom"
 | Phase 5: ChatPanel Integration | Low |
 | Testing & Polish | Medium |
 
+## Prompting Strategies & Templates
+
+### 1. Photorealistic Scenes
+Use photography terms: camera angles, lens types, lighting, fine details.
+
+**Template:**
+```
+A photorealistic [shot type] of [subject], [action or expression], set in
+[environment]. The scene is illuminated by [lighting description], creating
+a [mood] atmosphere. Captured with a [camera/lens details], emphasizing
+[key textures and details]. The image should be in a [aspect ratio] format.
+```
+
+### 2. Stylized Illustrations & Stickers
+Be explicit about style and request transparent background.
+
+**Template:**
+```
+A [style] sticker of a [subject], featuring [key characteristics] and a
+[color palette]. The design should have [line style] and [shading style].
+The background must be transparent.
+```
+
+### 3. Accurate Text in Images
+Clear about text content, font style, and overall design.
+
+**Template:**
+```
+Create a [image type] for [brand/concept] with the text "[text to render]"
+in a [font style]. The design should be [style description], with a
+[color scheme].
+```
+
+### 4. Product Mockups & Commercial Photography
+Professional product shots for e-commerce, advertising, branding.
+
+**Template:**
+```
+A high-resolution, studio-lit product photograph of a [product description]
+on a [background surface/description]. The lighting is a [lighting setup,
+e.g., three-point softbox setup] to [lighting purpose]. The camera angle is
+a [angle type] to showcase [specific feature]. Ultra-realistic, with sharp
+focus on [key detail]. [Aspect ratio].
+```
+
+### 5. Adding/Removing Elements
+Provide image and describe change - model matches style, lighting, perspective.
+
+**Template:**
+```
+Using the provided image of [subject], please [add/remove/modify] [element]
+to/from the scene. Ensure the change is [description of how the change should
+integrate].
+```
+
+### 6. Inpainting (Semantic Masking)
+Edit specific part while leaving rest untouched.
+
+**Template:**
+```
+Using the provided image, change only the [specific element] to [new
+element/description]. Keep everything else in the image exactly the same,
+preserving the original style, lighting, and composition.
+```
+
+### 7. Style Transfer
+Transfer artistic style from one image to another.
+
+**Template:**
+```
+Apply the artistic style and color palette from the first image (the
+[style reference]) to the content of the second image (the [content image]).
+```
+
+### 8. Virtual Try-On
+Combine clothing with model photos.
+
+**Template:**
+```
+Create a professional e-commerce fashion photo. Take the [garment] from the
+first image and let the [person] from the second image wear it. Generate a
+realistic [shot type] with [lighting/environment].
+```
+
+### 9. Character Consistency / 360 View
+Generate multiple angles by including previous outputs.
+
+**Template:**
+```
+A studio portrait of [person] against [background], [looking forward/in profile looking right/etc.]
+```
+
+### 10. Sketch to Finished Image
+Refine rough sketches into polished images.
+
+**Template:**
+```
+Turn this rough [medium] sketch of a [subject] into a [style description]
+photo. Keep the [specific features] from the sketch but add [new details/materials].
+```
+
+## Best Practices
+
+1. **Be Hyper-Specific**: Instead of "fantasy armor," describe "ornate elven plate armor, etched with silver leaf patterns, with a high collar and pauldrons shaped like falcon wings."
+
+2. **Provide Context and Intent**: Explain the purpose - "Create a logo for a high-end, minimalist skincare brand" yields better results than just "Create a logo."
+
+3. **Iterate and Refine**: Use conversational nature for small changes - "That's great, but can you make the lighting a bit warmer?"
+
+4. **Use Step-by-Step Instructions**: For complex scenes, break into steps - "First, create a background... Then, in the foreground, add... Finally, place..."
+
+5. **Use "Semantic Negative Prompts"**: Instead of "no cars," describe positively: "an empty, deserted street with no signs of traffic."
+
+6. **Control the Camera**: Use photographic/cinematic language - `wide-angle shot`, `macro shot`, `low-angle perspective`, `85mm portrait lens`, `bokeh`.
+
+7. **Text Generation Order**: When generating text for images, first generate the text content, then ask for an image with the text.
+
+## Use Cases for Omni-CORTEX Dashboard
+
+### Memory Visualization
+- **Decision Timeline**: "Create a visual timeline infographic showing the key decisions from these memories, with dates and brief descriptions"
+- **Architecture Diagram**: "Generate a system architecture diagram based on the technical decisions in these memories"
+- **Progress Report**: "Create a one-page visual progress report summarizing these project updates"
+
+### Knowledge Export
+- **Infographic Summary**: "Create an infographic summarizing the key learnings from these memories"
+- **Comparison Chart**: "Generate a comparison chart showing the pros and cons discussed in these memories"
+- **Workflow Diagram**: "Visualize the workflow described in these process memories"
+
+### Status Updates
+- **Project Status Card**: "Create a clean status card showing current project state based on these memories"
+- **Metric Dashboard**: "Generate a visual dashboard showing the metrics mentioned in these memories"
+
 ## Future Enhancements
 
 1. **Image History**: Store generated images with prompts for reference
@@ -588,3 +791,13 @@ Turn 3: User → "Add a timeline at the bottom"
 3. **Batch Generation**: Generate multiple variations
 4. **Export to Memory**: Save generated image as a new memory attachment
 5. **Collaborative Editing**: Share and refine images across sessions
+6. **Reference Image Upload**: Allow users to upload reference images alongside memories
+7. **Model Selection**: Toggle between Nano Banana Pro (quality) and Nano Banana (speed)
+8. **Prompt Library**: Save and reuse successful prompts
+9. **Generation Queue**: Background generation with notifications
+
+---
+
+**API Documentation Reference:** `docs/API Docs/Nano Banana Pro.md`
+**Memory ID:** `mem_1767934538243_cb1cd2b3`
+**Last Updated:** January 8, 2026
