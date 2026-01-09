@@ -229,10 +229,34 @@
 
 ## Optional Enhancements (Post-MVP)
 
-- [ ] Web dashboard for memory visualization
+- [x] Web dashboard for memory visualization
 - [ ] Memory import from Ken You Remember
 - [ ] Vector database backend (Chroma, Pinecone)
 - [ ] Multi-user support with authentication
 - [ ] Memory sharing between users/projects
 - [ ] Scheduled cleanup of old activities
 - [ ] Webhooks for external integrations
+
+---
+
+## Future Feature: Nano Banana Pro Image Generation
+
+**Plan:** `specs/nano-banana-pro-image-generation.md`
+**Memory:** `mem_1767934538243_cb1cd2b3`
+
+Integrate Gemini 3 Pro Image (gemini-3-pro-image-preview) into the dashboard Ask AI feature:
+- [ ] Phase 1: Backend - Create `image_service.py` with Nano Banana Pro integration
+- [ ] Phase 2: Backend - Add API endpoints (`/api/image/generate`, `/api/image/status`)
+- [ ] Phase 3: Frontend - Add image generation API functions to `api.ts`
+- [ ] Phase 4: Frontend - Create `ImageGenerationPanel.vue` component
+- [ ] Phase 5: Integration - Add tab/mode toggle to ChatPanel (Chat | Generate)
+- [ ] Phase 6: Testing & polish
+
+**Features:**
+- Select memories as context for image generation
+- Conversational back-and-forth refinement (thought signatures)
+- Generate infographics, update sheets, custom visuals
+- Support aspect ratios: 1:1, 16:9, 9:16, 4:3, 3:4
+- Support sizes: 2K, 4K
+- Download as PNG/JPEG
+- Optional Google Search grounding for real-time data

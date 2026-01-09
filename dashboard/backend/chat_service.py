@@ -22,7 +22,7 @@ def get_model() -> Optional[genai.GenerativeModel]:
     global _model
     if _model is None and _api_key:
         genai.configure(api_key=_api_key)
-        _model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        _model = genai.GenerativeModel("gemini-3-flash-preview")
     return _model
 
 
