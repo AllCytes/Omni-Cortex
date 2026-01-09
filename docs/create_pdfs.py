@@ -1012,7 +1012,8 @@ def create_dashboard_guide_pdf():
         ['Export Button', 'Export to JSON, Markdown, or CSV'],
         ['Filter Toggle', 'Show/hide the filter panel'],
         ['Theme Switcher', 'Light, Dark, or System preference'],
-        ['Connection Status', 'Live/Offline indicator with last update time'],
+        ['Help Button', 'Open help modal with shortcuts and tour replay'],
+        ['Connection Status', 'Live indicator with auto-updating timer (pulsing dot)'],
     ]
     nav_table = Table(nav_data, colWidths=[1.8*inch, 3.7*inch])
     nav_table.setStyle(TableStyle([
@@ -1031,9 +1032,13 @@ def create_dashboard_guide_pdf():
     elements.append(Paragraph("Keyboard Shortcuts", styles['OCSubSection']))
     shortcuts_data = [
         ['Shortcut', 'Action'],
-        ['Enter', 'Submit search or chat message'],
-        ['Shift+Enter', 'New line in chat input'],
-        ['Esc', 'Clear search input'],
+        ['/', 'Focus search bar'],
+        ['Esc', 'Clear selection/filters'],
+        ['j / k', 'Navigate down/up through memories'],
+        ['Enter', 'Select first memory / Submit chat'],
+        ['r', 'Refresh data'],
+        ['?', 'Open Help dialog'],
+        ['1-9', 'Quick filter by memory type'],
     ]
     shortcuts_table = Table(shortcuts_data, colWidths=[1.5*inch, 4*inch])
     shortcuts_table.setStyle(TableStyle([
@@ -1052,6 +1057,7 @@ def create_dashboard_guide_pdf():
 
     elements.append(Paragraph("Pro Tips", styles['OCSubSection']))
     tips = [
+        "First-time users see an <b>onboarding tour</b> - replay it via Help button",
         "Use the <b>Activity Heatmap</b> to identify your most productive periods",
         "Link related memories to build a knowledge graph for visualization",
         "Review stale memories monthly to keep your knowledge base fresh",
