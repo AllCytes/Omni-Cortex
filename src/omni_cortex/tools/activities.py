@@ -13,6 +13,7 @@ from ..models.activity import Activity, ActivityCreate, create_activity, get_act
 from ..models.memory import list_memories
 from ..utils.formatting import format_activity_markdown, format_timeline_markdown
 from ..utils.timestamps import now_iso, parse_iso
+from pathlib import Path
 
 
 # === Input Models ===
@@ -319,3 +320,134 @@ def _extract_mcp_server(tool_name: str) -> Optional[str]:
         return parts[1]  # Server name is the second part
 
     return None
+
+
+# === Natural Language Summary Generation ===
+
+
+def generate_activity_summary(
+    tool_name: Optional[str],
+    tool_input: Optional[str],
+    success: bool,
+    file_path: Optional[str],
+    event_type: str,
+) -> tuple[str, str]:
+    """Generate natural language summary for an activity.
+
+    Returns:
+        tuple of (short_summary, detailed_summary)
+        - short_summary: 12-20 words, shown in collapsed view
+        - detailed_summary: Expanded description with more context
+    """
+    short = ""
+    detail = ""
+
+    # Parse tool input if available
+    input_data = {}
+    if tool_input:
+        try:
+            input_data = json.loads(tool_input)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Generate summaries based on tool type
+    if tool_name == "Read":
+        path = input_data.get("file_path", file_path or "unknown file")
+        filename = Path(path).name if path else "file"
+        short = f"Read file: {filename}"
+        detail = f"Reading contents of {path}"
+
+    elif tool_name == "Write":
+        path = input_data.get("file_path", file_path or "unknown file")
+        filename = Path(path).name if path else "file"
+        short = f"Write file: {filename}"
+        detail = f"Writing/creating file at {path}"
+
+    elif tool_name == "Edit":
+        path = input_data.get("file_path", file_path or "unknown file")
+        filename = Path(path).name if path else "file"
+        short = f"Edit file: {filename}"
+        detail = f"Editing {path} - replacing text content"
+
+    elif tool_name == "Bash":
+        cmd = input_data.get("command", "")[:50]
+        short = f"Run command: {cmd}..."
+        detail = f"Executing bash command: {input_data.get('command', 'unknown')}"
+
+    elif tool_name == "Grep":
+        pattern = input_data.get("pattern", "")
+        short = f"Search for: {pattern[:30]}"
+        detail = f"Searching codebase for pattern: {pattern}"
+
+    elif tool_name == "Glob":
+        pattern = input_data.get("pattern", "")
+        short = f"Find files: {pattern[:30]}"
+        detail = f"Finding files matching pattern: {pattern}"
+
+    elif tool_name == "Skill":
+        skill = input_data.get("skill", "unknown")
+        short = f"Run skill: /{skill}"
+        detail = f"Executing slash command /{skill}"
+
+    elif tool_name == "Task":
+        desc = input_data.get("description", "task")
+        short = f"Spawn agent: {desc[:30]}"
+        detail = f"Launching sub-agent for: {input_data.get('prompt', desc)[:100]}"
+
+    elif tool_name == "WebSearch":
+        query = input_data.get("query", "")
+        short = f"Web search: {query[:30]}"
+        detail = f"Searching the web for: {query}"
+
+    elif tool_name == "WebFetch":
+        url = input_data.get("url", "")
+        short = f"Fetch URL: {url[:40]}"
+        detail = f"Fetching content from: {url}"
+
+    elif tool_name == "TodoWrite":
+        todos = input_data.get("todos", [])
+        count = len(todos) if isinstance(todos, list) else 0
+        short = f"Update todo list: {count} items"
+        detail = f"Managing task list with {count} items"
+
+    elif tool_name == "AskUserQuestion":
+        questions = input_data.get("questions", [])
+        count = len(questions) if isinstance(questions, list) else 1
+        short = f"Ask user: {count} question(s)"
+        detail = f"Prompting user for input with {count} question(s)"
+
+    elif tool_name and tool_name.startswith("mcp__"):
+        parts = tool_name.split("__")
+        server = parts[1] if len(parts) > 1 else "unknown"
+        tool = parts[2] if len(parts) > 2 else tool_name
+        short = f"MCP call: {server}/{tool}"
+        detail = f"Calling {tool} tool from MCP server {server}"
+
+    elif tool_name == "cortex_remember" or (tool_name and "remember" in tool_name.lower()):
+        params = input_data.get("params", {})
+        content = params.get("content", "") if isinstance(params, dict) else ""
+        short = f"Store memory: {content[:30]}..." if content else "Store memory"
+        detail = f"Saving to memory system: {content[:100]}" if content else "Saving to memory system"
+
+    elif tool_name == "cortex_recall" or (tool_name and "recall" in tool_name.lower()):
+        params = input_data.get("params", {})
+        query = params.get("query", "") if isinstance(params, dict) else ""
+        short = f"Recall: {query[:30]}" if query else "Recall memories"
+        detail = f"Searching memories for: {query}" if query else "Retrieving memories"
+
+    elif tool_name == "NotebookEdit":
+        path = input_data.get("notebook_path", "")
+        filename = Path(path).name if path else "notebook"
+        short = f"Edit notebook: {filename}"
+        detail = f"Editing Jupyter notebook {path}"
+
+    else:
+        short = f"{event_type}: {tool_name or 'unknown'}"
+        detail = f"Activity type {event_type} with tool {tool_name}"
+
+    # Add status suffix for failures
+    if not success:
+        short = f"[FAILED] {short}"
+        detail = f"[FAILED] {detail}"
+
+    return short, detail

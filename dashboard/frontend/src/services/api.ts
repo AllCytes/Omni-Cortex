@@ -375,6 +375,9 @@ export interface ActivityDetail {
   command_scope: string | null
   mcp_server: string | null
   skill_name: string | null
+  // Natural language summary fields
+  summary: string | null
+  summary_detail: string | null
 }
 
 export async function getCommandUsage(

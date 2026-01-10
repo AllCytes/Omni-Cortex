@@ -32,6 +32,7 @@ except ImportError:
 from database import (
     bulk_update_memory_status,
     delete_memory,
+    ensure_migrations,
     get_activities,
     get_activity_detail,
     get_activity_heatmap,
@@ -487,6 +488,9 @@ async def list_activities(
     if not Path(project).exists():
         raise HTTPException(status_code=404, detail="Database not found")
 
+    # Ensure migrations are applied (adds summary columns if missing)
+    ensure_migrations(project)
+
     return get_activities(project, event_type, tool_name, limit, offset)
 
 
@@ -627,11 +631,34 @@ async def get_activity_detail_endpoint(
     if not Path(project).exists():
         raise HTTPException(status_code=404, detail="Database not found")
 
+    # Ensure migrations are applied
+    ensure_migrations(project)
+
     activity = get_activity_detail(project, activity_id)
     if not activity:
         raise HTTPException(status_code=404, detail="Activity not found")
 
     return activity
+
+
+@app.post("/api/activities/backfill-summaries")
+async def backfill_activity_summaries_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Generate summaries for existing activities that don't have them."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    try:
+        from backfill_summaries import backfill_all
+        results = backfill_all(project)
+        return {
+            "success": True,
+            "summaries_updated": results["summaries"],
+            "mcp_servers_updated": results["mcp_servers"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backfill failed: {str(e)}")
 
 
 # --- Session Context Endpoints ---

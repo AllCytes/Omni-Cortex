@@ -293,7 +293,10 @@ def generate_dashboard_guide():
         "<b>Tool Filter</b> - Filter by specific tool name",
         "<b>Status Indicators</b> - Success/failure badges with error messages",
         "<b>Timing Info</b> - Duration in ms/seconds, exact timestamps",
-        "<b>Date Grouping</b> - Activities grouped chronologically by date"
+        "<b>Date Grouping</b> - Activities grouped chronologically by date",
+        "<b>Expandable Rows</b> - Click to view full JSON input/output with copy button",
+        "<b>MCP Badges</b> - Shows which MCP server handled the tool call",
+        "<b>Command/Skill Tags</b> - Visual badges for slash commands and skills"
     ]:
         elements.append(Paragraph(f"• {item}", styles['BulletItem']))
     elements.append(Spacer(1, 10))
@@ -320,6 +323,21 @@ def generate_dashboard_guide():
         ["Memory Growth", "30-day line chart: cumulative + daily new"],
     ]
     elements.append(create_table(stats_data, [2*inch, 4*inch]))
+    elements.append(Spacer(1, 15))
+
+    # Command & Skill Analytics (NEW - v1.3.0)
+    elements.append(Paragraph("Command & Skill Analytics (v1.3.0+)", styles['SubHeading']))
+    elements.append(Paragraph(
+        "Track slash command and skill usage patterns with scope differentiation.",
+        styles['OmniBody']
+    ))
+    analytics_data = [
+        ["Chart", "Description"],
+        ["Command Usage", "Bar chart: slash commands by usage count, filterable by scope (universal/project)"],
+        ["Skill Usage", "Bar chart: skill adoption and success rates"],
+        ["MCP Usage", "Doughnut chart: MCP server integration metrics with tool/call counts"],
+    ]
+    elements.append(create_table(analytics_data, [2*inch, 4*inch]))
     elements.append(Spacer(1, 20))
 
     # Review Tab
@@ -376,6 +394,35 @@ def generate_dashboard_guide():
         "<b>Example Prompts</b> - Suggested queries to get started"
     ]:
         elements.append(Paragraph(f"• {item}", styles['BulletItem']))
+    elements.append(Spacer(1, 15))
+
+    # Image Generation Mode (NEW - v1.2.0)
+    elements.append(Paragraph("Image Generation Mode (Nano Banana Pro)", styles['SectionHeading']))
+    elements.append(Paragraph(
+        "Generate visual content from your memories using Gemini 3 Pro image generation. "
+        "Toggle between Chat and Generate modes in the Ask AI panel header.",
+        styles['OmniBody']
+    ))
+    elements.append(Spacer(1, 10))
+    elements.append(create_two_column_box(
+        "Image Features",
+        ["8 preset templates", "Batch generation (1-4 images)", "10 aspect ratios", "1K/2K/4K resolution"],
+        "Memory Integration",
+        ["Select memories as context", "Search and filter memories", "Multi-turn refinement", "Click-to-edit images"]
+    ))
+    elements.append(Spacer(1, 10))
+    preset_data = [
+        ["Preset", "Best For"],
+        ["Infographic", "Visual summaries with icons and data"],
+        ["Key Insights", "Bullet-point style visual cards"],
+        ["Tips & Tricks", "Numbered lists with visual elements"],
+        ["Quote Card", "Memorable quotes styled for sharing"],
+        ["Workflow", "Step-by-step process diagrams"],
+        ["Comparison", "Side-by-side feature comparisons"],
+        ["Summary Card", "Compact visual overviews"],
+        ["Custom", "Free-form prompts with full control"],
+    ]
+    elements.append(create_table(preset_data, [1.8*inch, 4.2*inch]))
     elements.append(PageBreak())
 
     # Header Navigation
@@ -1040,6 +1087,9 @@ def generate_feature_comparison():
         ["Web Dashboard", "None", "Full-featured Vue 3 dashboard"],
         ["Export Options", "None", "JSON, Markdown, CSV, SQLite"],
         ["Semantic Search", "None", "Optional embeddings support"],
+        ["Image Generation", "None", "Nano Banana Pro integration"],
+        ["Command Analytics", "None", "Slash command/skill usage tracking"],
+        ["Security Hardening", "None", "XSS/CSRF protection, CSP headers"],
     ]
 
     # Custom table with checkmarks
@@ -1104,6 +1154,30 @@ def generate_feature_comparison():
     elements.append(Paragraph(
         "The global index at ~/.omni-cortex/global.db enables searching across all your projects. "
         "Find patterns and solutions from previous projects instantly.",
+        styles['OmniBody']
+    ))
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("Image Generation (Nano Banana Pro)", styles['SubHeading']))
+    elements.append(Paragraph(
+        "Generate visual content directly from your memories using Gemini 3 Pro. Create infographics, "
+        "workflow diagrams, quote cards, and more with 8 preset templates and full customization.",
+        styles['OmniBody']
+    ))
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("Command & Skill Analytics", styles['SubHeading']))
+    elements.append(Paragraph(
+        "Track which slash commands and skills you use most, with scope differentiation (universal vs project). "
+        "Monitor MCP server integration metrics and view success rates for all tool calls.",
+        styles['OmniBody']
+    ))
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("Security Hardening", styles['SubHeading']))
+    elements.append(Paragraph(
+        "Production-ready security with XSS protection (DOMPurify), path traversal prevention, "
+        "security headers (CSP, X-Frame-Options), and prompt injection protection for LLM integrations.",
         styles['OmniBody']
     ))
     elements.append(Spacer(1, 20))

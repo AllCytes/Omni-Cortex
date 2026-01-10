@@ -24,6 +24,12 @@ MIGRATIONS: dict[str, str] = {
         CREATE INDEX IF NOT EXISTS idx_activities_mcp ON activities(mcp_server);
         CREATE INDEX IF NOT EXISTS idx_activities_skill ON activities(skill_name);
     """,
+    # Natural language summary columns for activity display
+    "1.2": """
+        -- Add natural language summary columns to activities table
+        ALTER TABLE activities ADD COLUMN summary TEXT;
+        ALTER TABLE activities ADD COLUMN summary_detail TEXT;
+    """,
 }
 
 

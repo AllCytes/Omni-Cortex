@@ -338,6 +338,14 @@ watch(() => store.currentDbPath, () => {
                     </span>
                   </div>
 
+                  <!-- Natural Language Summary (collapsed view) -->
+                  <p
+                    v-if="activity.summary"
+                    class="text-sm text-gray-600 dark:text-gray-300 mt-1"
+                  >
+                    {{ activity.summary }}
+                  </p>
+
                   <!-- Error Message -->
                   <p
                     v-if="activity.error_message"
@@ -348,7 +356,7 @@ watch(() => store.currentDbPath, () => {
 
                   <!-- File Path -->
                   <p
-                    v-if="activity.file_path"
+                    v-if="activity.file_path && !activity.summary"
                     class="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate font-mono"
                   >
                     {{ activity.file_path }}
@@ -379,6 +387,14 @@ watch(() => store.currentDbPath, () => {
 
                 <!-- Details content -->
                 <template v-else-if="activityDetails.has(activity.id)">
+                  <!-- Detailed Summary -->
+                  <div v-if="activityDetails.get(activity.id)?.summary_detail" class="mb-4">
+                    <h4 class="font-medium text-sm mb-1">What happened:</h4>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                      {{ activityDetails.get(activity.id)?.summary_detail }}
+                    </p>
+                  </div>
+
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Input -->
                     <div>

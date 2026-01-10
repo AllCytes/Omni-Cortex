@@ -84,6 +84,14 @@ class Activity(BaseModel):
     duration_ms: Optional[int] = None
     file_path: Optional[str] = None
     timestamp: datetime
+    # Command analytics fields
+    command_name: Optional[str] = None
+    command_scope: Optional[str] = None
+    mcp_server: Optional[str] = None
+    skill_name: Optional[str] = None
+    # Natural language summary fields
+    summary: Optional[str] = None
+    summary_detail: Optional[str] = None
 
 
 class Session(BaseModel):

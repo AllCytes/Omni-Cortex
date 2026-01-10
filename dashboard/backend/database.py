@@ -24,6 +24,58 @@ def get_write_connection(db_path: str) -> sqlite3.Connection:
     return conn
 
 
+def ensure_migrations(db_path: str) -> None:
+    """Ensure database has latest migrations applied.
+
+    This function checks for and applies any missing schema updates,
+    including command analytics columns and natural language summary columns.
+    """
+    conn = get_write_connection(db_path)
+
+    # Check if activities table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='activities'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return
+
+    # Check available columns
+    columns = conn.execute("PRAGMA table_info(activities)").fetchall()
+    column_names = {col[1] for col in columns}
+
+    migrations_applied = []
+
+    # Migration v1.1: Command analytics columns
+    if "command_name" not in column_names:
+        conn.executescript("""
+            ALTER TABLE activities ADD COLUMN command_name TEXT;
+            ALTER TABLE activities ADD COLUMN command_scope TEXT;
+            ALTER TABLE activities ADD COLUMN mcp_server TEXT;
+            ALTER TABLE activities ADD COLUMN skill_name TEXT;
+
+            CREATE INDEX IF NOT EXISTS idx_activities_command ON activities(command_name);
+            CREATE INDEX IF NOT EXISTS idx_activities_mcp ON activities(mcp_server);
+            CREATE INDEX IF NOT EXISTS idx_activities_skill ON activities(skill_name);
+        """)
+        migrations_applied.append("v1.1: command analytics columns")
+
+    # Migration v1.2: Natural language summary columns
+    if "summary" not in column_names:
+        conn.executescript("""
+            ALTER TABLE activities ADD COLUMN summary TEXT;
+            ALTER TABLE activities ADD COLUMN summary_detail TEXT;
+        """)
+        migrations_applied.append("v1.2: summary columns")
+
+    if migrations_applied:
+        conn.commit()
+        print(f"[Database] Applied migrations: {', '.join(migrations_applied)}")
+
+    conn.close()
+
+
 def parse_tags(tags_str: Optional[str]) -> list[str]:
     """Parse tags from JSON string."""
     if not tags_str:
@@ -183,8 +235,12 @@ def get_activities(
     limit: int = 100,
     offset: int = 0,
 ) -> list[Activity]:
-    """Get activity log entries."""
+    """Get activity log entries with all available fields."""
     conn = get_connection(db_path)
+
+    # Check available columns for backward compatibility
+    columns = conn.execute("PRAGMA table_info(activities)").fetchall()
+    column_names = {col[1] for col in columns}
 
     query = "SELECT * FROM activities WHERE 1=1"
     params: list = []
@@ -212,21 +268,37 @@ def get_activities(
             # Fallback for edge cases
             ts = datetime.now()
 
-        activities.append(
-            Activity(
-                id=row["id"],
-                session_id=row["session_id"],
-                event_type=row["event_type"],
-                tool_name=row["tool_name"],
-                tool_input=row["tool_input"],
-                tool_output=row["tool_output"],
-                success=bool(row["success"]),
-                error_message=row["error_message"],
-                duration_ms=row["duration_ms"],
-                file_path=row["file_path"],
-                timestamp=ts,
-            )
-        )
+        activity_data = {
+            "id": row["id"],
+            "session_id": row["session_id"],
+            "event_type": row["event_type"],
+            "tool_name": row["tool_name"],
+            "tool_input": row["tool_input"],
+            "tool_output": row["tool_output"],
+            "success": bool(row["success"]),
+            "error_message": row["error_message"],
+            "duration_ms": row["duration_ms"],
+            "file_path": row["file_path"],
+            "timestamp": ts,
+        }
+
+        # Add command analytics fields if available
+        if "command_name" in column_names:
+            activity_data["command_name"] = row["command_name"]
+        if "command_scope" in column_names:
+            activity_data["command_scope"] = row["command_scope"]
+        if "mcp_server" in column_names:
+            activity_data["mcp_server"] = row["mcp_server"]
+        if "skill_name" in column_names:
+            activity_data["skill_name"] = row["skill_name"]
+
+        # Add summary fields if available
+        if "summary" in column_names:
+            activity_data["summary"] = row["summary"]
+        if "summary_detail" in column_names:
+            activity_data["summary_detail"] = row["summary_detail"]
+
+        activities.append(Activity(**activity_data))
 
     conn.close()
     return activities
@@ -932,6 +1004,12 @@ def get_activity_detail(db_path: str, activity_id: str) -> Optional[dict]:
         result["mcp_server"] = row["mcp_server"]
     if "skill_name" in column_names:
         result["skill_name"] = row["skill_name"]
+
+    # Add summary fields if they exist
+    if "summary" in column_names:
+        result["summary"] = row["summary"]
+    if "summary_detail" in column_names:
+        result["summary_detail"] = row["summary_detail"]
 
     conn.close()
     return result

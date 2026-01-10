@@ -202,6 +202,8 @@ def build_pdf():
     elements.append(Paragraph("&bull; <b>Status Indicators</b> - Success/failure badges with error messages", bullet_style))
     elements.append(Paragraph("&bull; <b>Timing Info</b> - Duration in ms/seconds, exact timestamps", bullet_style))
     elements.append(Paragraph("&bull; <b>Date Grouping</b> - Activities grouped chronologically by date", bullet_style))
+    elements.append(Paragraph("&bull; <b>Expandable Rows</b> - Click to view full JSON input/output with copy button (v1.3.0+)", bullet_style))
+    elements.append(Paragraph("&bull; <b>MCP Badges</b> - Shows which MCP server handled the tool call (v1.3.0+)", bullet_style))
     elements.append(create_code_block("Activity Stats: Total activities | Success count | Failed count"))
 
     # Statistics Tab
@@ -219,6 +221,9 @@ def build_pdf():
         ['Activity Heatmap', '90-day GitHub-style calendar visualization'],
         ['Tool Usage Chart', 'Top 10 tools with success rate indicators'],
         ['Memory Growth', '30-day line chart: cumulative + daily new'],
+        ['Command Usage', 'Slash command usage by scope (v1.3.0+)'],
+        ['Skill Usage', 'Skill adoption and success rates (v1.3.0+)'],
+        ['MCP Usage', 'MCP server integration metrics (v1.3.0+)'],
     ]
     stats_table = Table(stats_data, colWidths=[1.8*inch, 3.5*inch])
     stats_table.setStyle(TableStyle([
@@ -278,6 +283,36 @@ def build_pdf():
     elements.append(Paragraph("&bull; <b>Source Citations</b> - Responses cite which memories were used", bullet_style))
     elements.append(Paragraph("&bull; <b>Clickable Sources</b> - Click citations to navigate to memory", bullet_style))
     elements.append(Paragraph("&bull; <b>Example Prompts</b> - Suggested queries to get started", bullet_style))
+
+    # NEW: Image Generation Mode (v1.2.0)
+    elements.append(Paragraph("Image Generation Mode (v1.2.0+)", subheading_style))
+    elements.append(Paragraph(
+        "Toggle to Generate mode in the header to create visual content from your memories using Nano Banana Pro (Gemini 3).",
+        body_style
+    ))
+    image_features_data = [
+        ['Feature', 'Description'],
+        ['Preset Templates', '8 presets: Infographic, Key Insights, Quote Card, Workflow, etc.'],
+        ['Batch Generation', 'Generate 1, 2, or 4 images per request'],
+        ['Memory Context', 'Select memories to use as context with search/filter'],
+        ['Multi-turn Editing', 'Click any image to refine with conversation history'],
+        ['Aspect Ratios', '10 options: 1:1, 16:9, 9:16, 4:3, 3:4, etc.'],
+        ['Resolution', '1K, 2K, or 4K output'],
+    ]
+    image_table = Table(image_features_data, colWidths=[1.5*inch, 4*inch])
+    image_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 1), (-1, -1), LIGHT_BG),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(image_table)
+    elements.append(Spacer(1, 10))
 
     # NEW: Chat UX Features (v1.0.11)
     elements.append(Paragraph("Chat UX Features (v1.0.11+)", subheading_style))

@@ -46,6 +46,14 @@ CREATE TABLE IF NOT EXISTS activities (
     project_path TEXT,
     file_path TEXT,
     metadata TEXT,
+    -- Command analytics columns (v1.1)
+    command_name TEXT,
+    command_scope TEXT,
+    mcp_server TEXT,
+    skill_name TEXT,
+    -- Natural language summaries (v1.2)
+    summary TEXT,
+    summary_detail TEXT,
     FOREIGN KEY (session_id) REFERENCES sessions(id),
     FOREIGN KEY (agent_id) REFERENCES agents(id)
 );

@@ -2,6 +2,74 @@
 
 All notable changes to OmniCortex will be documented in this file.
 
+## [1.4.0] - 2026-01-10
+
+### Security Remediation
+Comprehensive security audit and remediation addressing 19 vulnerabilities:
+
+- **XSS Protection**: Added DOMPurify sanitization to ChatPanel and MemoryCard
+- **Path Traversal Protection**: PathValidator class validates all file path parameters
+- **Security Headers**: Added X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, CSP
+- **Prompt Injection Protection**: XML-based sanitization for LLM prompts
+- **CORS Hardening**: Restricted methods and headers from wildcards
+- **Input Validation**: Enhanced validation for all API endpoints
+- **Log Sanitization**: Sensitive fields redacted from activity logs
+- **Dependency Updates**: Upgraded axios to patch CVE-2025-58754 and CVE-2025-27152
+
+### Added
+- `dashboard/backend/security.py` - PathValidator for file path validation
+- `dashboard/backend/prompt_security.py` - Prompt injection protection utilities
+- `dashboard/backend/.env.example` - Environment variable template
+- `dashboard/frontend/src/utils/sanitize.ts` - Client-side XSS protection
+- `dashboard/frontend/src/utils/logger.ts` - Development-only console logging
+- 31 new security tests in `tests/test_prompt_security.py`
+
+## [1.3.0] - 2026-01-09
+
+### Added
+- **Slash Command/Skill Analytics Dashboard**
+  - `CommandUsageChart.vue`: Bar chart for slash command usage with scope filtering (universal/project)
+  - `SkillUsageChart.vue`: Bar chart for skill adoption and success rates
+  - `MCPUsageChart.vue`: Doughnut chart for MCP server integration metrics
+  - Enhanced `ActivityTimeline.vue`: Expandable rows with full JSON input/output, copy-to-clipboard
+  - MCP server badges and command/skill badges in activity display
+
+- **Database Migration v1.1**
+  - New columns: `command_name`, `command_scope`, `mcp_server`, `skill_name`
+  - Indexed for efficient querying
+  - Backward compatible with older databases
+
+- **Auto-Detection System**
+  - Extracts skill names from Skill tool calls
+  - Determines scope (universal/project) by checking file locations
+  - Identifies MCP servers from tool naming patterns (`mcp__servername__toolname`)
+
+- **New API Endpoints**
+  - `GET /api/stats/command-usage` - Slash command usage statistics
+  - `GET /api/stats/skill-usage` - Skill usage statistics
+  - `GET /api/stats/mcp-usage` - MCP server usage statistics
+  - `GET /api/activities/{id}` - Full activity details with input/output
+
+## [1.2.0] - 2026-01-09
+
+### Added
+- **Nano Banana Pro Image Generation**
+  - Integrated Gemini 3 Pro image generation into Ask AI panel
+  - Mode toggle in ChatPanel header (Chat / Generate)
+  - 8 preset templates: Infographic, Key Insights, Tips & Tricks, Quote Card, Workflow, Comparison, Summary Card, Custom
+  - Memory selection side panel with search and select all/none
+  - Batch generation (1, 2, or 4 images per request)
+  - Per-image preset, aspect ratio, and size controls
+  - Click-to-edit refinement with multi-turn conversation
+  - 10 aspect ratios: 1:1, 16:9, 9:16, 4:3, 3:4, 4:5, 5:4, 2:3, 3:2, 21:9
+  - 3 resolutions: 1K, 2K, 4K
+  - Google Search grounding toggle for real-time data
+
+### New Components
+- `dashboard/backend/image_service.py` - Image generation service (450 lines)
+- `dashboard/frontend/src/components/ImageGenerationPanel.vue` - Full-featured panel (550 lines)
+- API endpoints: `/api/image/generate-batch`, `/api/image/refine`, `/api/image/status`, `/api/image/presets`
+
 ## [1.0.8] - 2026-01-08
 
 ### Added
