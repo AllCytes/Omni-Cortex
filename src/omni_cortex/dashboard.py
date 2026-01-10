@@ -12,6 +12,51 @@ from pathlib import Path
 from time import sleep
 
 
+def check_editable_install() -> bool:
+    """Check if package is installed in editable (development) mode.
+
+    Returns True if editable, False if installed from PyPI.
+    """
+    try:
+        import importlib.metadata as metadata
+        dist = metadata.distribution("omni-cortex")
+        # Editable installs have a direct_url.json with editable=true
+        # or are installed via .egg-link
+        direct_url = dist.read_text("direct_url.json")
+        if direct_url and '"editable":true' in direct_url.replace(" ", ""):
+            return True
+    except Exception:
+        pass
+
+    # Alternative check: see if we're running from source directory
+    package_dir = Path(__file__).parent
+    repo_root = package_dir.parent.parent
+    if (repo_root / "pyproject.toml").exists() and (repo_root / ".git").exists():
+        # We're in a repo, check if there's an egg-link or editable marker
+        import site
+        for site_dir in [site.getusersitepackages()] + site.getsitepackages():
+            egg_link = Path(site_dir) / "omni-cortex.egg-link"
+            if egg_link.exists():
+                return True
+            # Check for __editable__ marker (PEP 660) - any version
+            for pth_file in Path(site_dir).glob("__editable__.omni_cortex*.pth"):
+                return True
+
+    return False
+
+
+def warn_non_editable_install() -> None:
+    """Warn if not running in editable mode during development."""
+    if not check_editable_install():
+        # Check if we appear to be in a development context
+        package_dir = Path(__file__).parent
+        repo_root = package_dir.parent.parent
+        if (repo_root / "pyproject.toml").exists() and (repo_root / ".git").exists():
+            print("[Dashboard] Note: Package may not be in editable mode.")
+            print("[Dashboard] If you see import errors, run: pip install -e .")
+            print()
+
+
 def find_dashboard_dir() -> Path | None:
     """Find the dashboard directory.
 
@@ -114,6 +159,9 @@ def start_server(dashboard_dir: Path, host: str, port: int, no_browser: bool) ->
 
 def main():
     """Main entry point for omni-cortex dashboard command."""
+    # Check for potential editable install issues early
+    warn_non_editable_install()
+
     parser = argparse.ArgumentParser(
         description="Start the Omni-Cortex web dashboard",
         formatter_class=argparse.RawDescriptionHelpFormatter,
