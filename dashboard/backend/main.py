@@ -39,7 +39,21 @@ from database import (
     update_memory,
 )
 from logging_config import log_success, log_error
-from models import ChatRequest, ChatResponse, ConversationSaveRequest, ConversationSaveResponse, FilterParams, MemoryUpdate, ProjectInfo, ProjectRegistration
+from models import (
+    ChatRequest,
+    ChatResponse,
+    ConversationSaveRequest,
+    ConversationSaveResponse,
+    FilterParams,
+    MemoryUpdate,
+    ProjectInfo,
+    ProjectRegistration,
+    BatchImageGenerationRequest,
+    BatchImageGenerationResponse,
+    ImageRefineRequest,
+    SingleImageRequestModel,
+    SingleImageResponseModel,
+)
 from project_config import (
     load_config,
     add_registered_project,
@@ -51,6 +65,7 @@ from project_config import (
 from project_scanner import scan_projects
 from websocket_manager import manager
 import chat_service
+from image_service import image_service, ImagePreset, SingleImageRequest
 
 
 class DatabaseChangeHandler(FileSystemEventHandler):
@@ -628,6 +643,109 @@ async def save_chat_conversation(
     except Exception as e:
         log_error("/api/chat/save", e)
         raise
+
+
+# --- Image Generation Endpoints ---
+
+
+@app.get("/api/image/status")
+async def get_image_status():
+    """Check if image generation is available."""
+    return {
+        "available": image_service.is_available(),
+        "message": "Image generation ready" if image_service.is_available()
+                   else "Configure GEMINI_API_KEY and install google-genai for image generation",
+    }
+
+
+@app.get("/api/image/presets")
+async def get_image_presets():
+    """Get available image preset templates."""
+    return {"presets": image_service.get_presets()}
+
+
+@app.post("/api/image/generate-batch", response_model=BatchImageGenerationResponse)
+async def generate_images_batch(
+    request: BatchImageGenerationRequest,
+    db_path: str = Query(..., alias="project", description="Path to the database file"),
+):
+    """Generate multiple images with different presets/prompts."""
+    # Validate image count
+    if len(request.images) not in [1, 2, 4]:
+        return BatchImageGenerationResponse(
+            success=False,
+            errors=["Must request 1, 2, or 4 images"]
+        )
+
+    # Build memory context
+    memory_context = ""
+    if request.memory_ids:
+        memory_context = image_service.build_memory_context(db_path, request.memory_ids)
+
+    # Build chat context
+    chat_context = image_service.build_chat_context(request.chat_messages)
+
+    # Convert request models to internal format
+    image_requests = [
+        SingleImageRequest(
+            preset=ImagePreset(img.preset),
+            custom_prompt=img.custom_prompt,
+            aspect_ratio=img.aspect_ratio,
+            image_size=img.image_size
+        )
+        for img in request.images
+    ]
+
+    result = await image_service.generate_batch(
+        requests=image_requests,
+        memory_context=memory_context,
+        chat_context=chat_context,
+        use_search_grounding=request.use_search_grounding
+    )
+
+    return BatchImageGenerationResponse(
+        success=result.success,
+        images=[
+            SingleImageResponseModel(
+                success=img.success,
+                image_data=img.image_data,
+                text_response=img.text_response,
+                thought_signature=img.thought_signature,
+                image_id=img.image_id,
+                error=img.error,
+                index=img.index
+            )
+            for img in result.images
+        ],
+        errors=result.errors
+    )
+
+
+@app.post("/api/image/refine", response_model=SingleImageResponseModel)
+async def refine_image(request: ImageRefineRequest):
+    """Refine an existing generated image with a new prompt."""
+    result = await image_service.refine_image(
+        image_id=request.image_id,
+        refinement_prompt=request.refinement_prompt,
+        aspect_ratio=request.aspect_ratio,
+        image_size=request.image_size
+    )
+
+    return SingleImageResponseModel(
+        success=result.success,
+        image_data=result.image_data,
+        text_response=result.text_response,
+        thought_signature=result.thought_signature,
+        image_id=result.image_id,
+        error=result.error
+    )
+
+
+@app.post("/api/image/clear-conversation")
+async def clear_image_conversation(image_id: Optional[str] = None):
+    """Clear image conversation history. If image_id provided, clear only that image."""
+    image_service.clear_conversation(image_id)
+    return {"status": "cleared", "image_id": image_id}
 
 
 # --- WebSocket Endpoint ---

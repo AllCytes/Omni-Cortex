@@ -449,3 +449,127 @@ export async function refreshProjects(): Promise<number> {
   const response = await api.post<{ count: number }>('/projects/refresh')
   return response.data.count
 }
+
+// --- Image Generation ---
+
+export type ImagePreset =
+  | 'infographic'
+  | 'key_insights'
+  | 'tips_tricks'
+  | 'quote_card'
+  | 'workflow'
+  | 'comparison'
+  | 'summary_card'
+  | 'custom'
+
+export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5' | '5:4' | '2:3' | '3:2' | '21:9'
+export type ImageSize = '1K' | '2K' | '4K'
+
+export interface SingleImageRequest {
+  preset: ImagePreset
+  custom_prompt: string
+  aspect_ratio: AspectRatio
+  image_size: ImageSize
+}
+
+export interface BatchImageGenerationRequest {
+  images: SingleImageRequest[]  // 1, 2, or 4 images
+  memory_ids: string[]
+  chat_messages: Array<{ role: string; content: string }>  // Recent chat for context
+  use_search_grounding: boolean
+}
+
+export interface ImageRefineRequest {
+  image_id: string
+  refinement_prompt: string
+  aspect_ratio?: AspectRatio
+  image_size?: ImageSize
+}
+
+export interface SingleImageResponse {
+  success: boolean
+  image_data?: string  // Base64 encoded
+  text_response?: string
+  thought_signature?: string
+  image_id?: string
+  error?: string
+  index: number
+}
+
+export interface BatchImageGenerationResponse {
+  success: boolean
+  images: SingleImageResponse[]
+  errors: string[]
+}
+
+export interface ImagePresetInfo {
+  value: ImagePreset
+  label: string
+  default_aspect: AspectRatio
+}
+
+export interface ImageStatusResponse {
+  available: boolean
+  message: string
+}
+
+export async function getImageStatus(): Promise<ImageStatusResponse> {
+  const response = await api.get<ImageStatusResponse>('/image/status')
+  return response.data
+}
+
+export async function getImagePresets(): Promise<{ presets: ImagePresetInfo[] }> {
+  const response = await api.get<{ presets: ImagePresetInfo[] }>('/image/presets')
+  return response.data
+}
+
+export async function generateImagesBatch(
+  dbPath: string,
+  request: BatchImageGenerationRequest
+): Promise<BatchImageGenerationResponse> {
+  const response = await api.post<BatchImageGenerationResponse>(
+    `/image/generate-batch?project=${encodeURIComponent(dbPath)}`,
+    request,
+    { timeout: 180000 }  // 3 minutes for image generation
+  )
+  return response.data
+}
+
+export async function refineImage(
+  request: ImageRefineRequest
+): Promise<SingleImageResponse> {
+  const response = await api.post<SingleImageResponse>(
+    '/image/refine',
+    request,
+    { timeout: 180000 }
+  )
+  return response.data
+}
+
+export async function clearImageConversation(imageId?: string): Promise<void> {
+  const url = imageId
+    ? `/image/clear-conversation?image_id=${encodeURIComponent(imageId)}`
+    : '/image/clear-conversation'
+  await api.post(url)
+}
+
+// Helper to create default image requests
+export function createDefaultImageRequest(preset: ImagePreset = 'custom'): SingleImageRequest {
+  const presetDefaults: Record<ImagePreset, AspectRatio> = {
+    infographic: '9:16',
+    key_insights: '1:1',
+    tips_tricks: '4:5',
+    quote_card: '1:1',
+    workflow: '16:9',
+    comparison: '16:9',
+    summary_card: '4:3',
+    custom: '16:9'
+  }
+
+  return {
+    preset,
+    custom_prompt: '',
+    aspect_ratio: presetDefaults[preset],
+    image_size: '2K'
+  }
+}

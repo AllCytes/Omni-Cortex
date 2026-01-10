@@ -32,7 +32,9 @@ import {
   FileText,
   FileJson,
   Clipboard,
+  Image,
 } from 'lucide-vue-next'
+import ImageGenerationPanel from './ImageGenerationPanel.vue'
 import { marked } from 'marked'
 import SourceTooltip from './SourceTooltip.vue'
 
@@ -90,6 +92,9 @@ const currentSearchIndex = ref(0)
 
 // Keyboard shortcuts help
 const showShortcutsHelp = ref(false)
+
+// Mode toggle: 'chat' or 'image'
+const mode = ref<'chat' | 'image'>('chat')
 
 // Type colors for source badges
 const TYPE_COLORS: Record<string, string> = {
@@ -654,9 +659,31 @@ const emit = defineEmits<{
   <div class="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
     <!-- Header -->
     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <MessageCircle class="w-5 h-5 text-blue-600" />
-        <span class="font-semibold">Ask About Memories</span>
+      <div class="flex items-center gap-3">
+        <!-- Mode Toggle -->
+        <div class="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-0.5">
+          <button
+            @click="mode = 'chat'"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+            :class="mode === 'chat'
+              ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'"
+          >
+            <MessageCircle class="w-4 h-4" />
+            Chat
+          </button>
+          <button
+            @click="mode = 'image'"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+            :class="mode === 'image'
+              ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'"
+          >
+            <Image class="w-4 h-4" />
+            Generate
+          </button>
+        </div>
+        <span class="font-semibold">{{ mode === 'chat' ? 'Ask About Memories' : 'Image Generation' }}</span>
       </div>
 
       <!-- Header Actions -->
@@ -746,6 +773,14 @@ const emit = defineEmits<{
       </button>
     </div>
 
+    <!-- Image Generation Mode -->
+    <ImageGenerationPanel
+      v-if="mode === 'image'"
+      :chat-messages="messages.map(m => ({ role: m.role, content: m.content }))"
+    />
+
+    <!-- Chat Mode -->
+    <template v-else>
     <!-- Chat Not Available -->
     <div v-if="!isChatAvailable" class="flex-1 flex items-center justify-center p-6">
       <div class="text-center">
@@ -1059,6 +1094,7 @@ const emit = defineEmits<{
           </button>
         </div>
       </div>
+    </template>
     </template>
 
     <!-- Source Tooltip -->

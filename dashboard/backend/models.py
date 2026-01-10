@@ -186,3 +186,48 @@ class ConversationSaveResponse(BaseModel):
 
     memory_id: str
     summary: str
+
+
+# --- Image Generation Models ---
+
+
+class SingleImageRequestModel(BaseModel):
+    """Request for a single image in a batch."""
+    preset: str = "custom"  # Maps to ImagePreset enum
+    custom_prompt: str = ""
+    aspect_ratio: str = "16:9"
+    image_size: str = "2K"
+
+
+class BatchImageGenerationRequest(BaseModel):
+    """Request for generating multiple images."""
+    images: list[SingleImageRequestModel]  # 1, 2, or 4 images
+    memory_ids: list[str] = []
+    chat_messages: list[dict] = []  # Recent chat for context
+    use_search_grounding: bool = False
+
+
+class ImageRefineRequest(BaseModel):
+    """Request for refining an existing image."""
+    image_id: str
+    refinement_prompt: str
+    aspect_ratio: Optional[str] = None
+    image_size: Optional[str] = None
+
+
+class SingleImageResponseModel(BaseModel):
+    """Response for a single generated image."""
+    success: bool
+    image_data: Optional[str] = None  # Base64 encoded
+    text_response: Optional[str] = None
+    thought_signature: Optional[str] = None
+    image_id: Optional[str] = None
+    error: Optional[str] = None
+    index: int = 0
+
+
+class BatchImageGenerationResponse(BaseModel):
+    """Response for batch image generation."""
+    success: bool
+    images: list[SingleImageResponseModel] = []
+    errors: list[str] = []
