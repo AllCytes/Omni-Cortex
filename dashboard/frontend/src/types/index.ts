@@ -62,6 +62,43 @@ export interface Activity {
   duration_ms: number | null
   file_path: string | null
   timestamp: string
+  // Command analytics fields
+  command_name: string | null
+  command_scope: string | null
+  mcp_server: string | null
+  skill_name: string | null
+}
+
+// Activity detail (with full input/output)
+export interface ActivityDetail extends Activity {
+  tool_input_full: string | null
+  tool_output_full: string | null
+}
+
+// Command usage analytics
+export interface CommandUsageEntry {
+  command_name: string
+  command_scope: 'universal' | 'project' | 'unknown'
+  count: number
+  success_rate: number
+  avg_duration_ms: number | null
+}
+
+// Skill usage analytics
+export interface SkillUsageEntry {
+  skill_name: string
+  skill_scope: 'universal' | 'project' | 'unknown'
+  count: number
+  success_rate: number
+  avg_duration_ms: number | null
+}
+
+// MCP usage analytics
+export interface MCPUsageEntry {
+  mcp_server: string
+  tool_count: number
+  total_calls: number
+  success_rate: number
 }
 
 // Session types

@@ -334,6 +334,95 @@ export async function getMemoryGrowth(
   return response.data
 }
 
+// --- Command Analytics ---
+
+export interface CommandUsageEntry {
+  command_name: string
+  command_scope: 'universal' | 'project' | 'unknown'
+  count: number
+  success_rate: number
+  avg_duration_ms: number | null
+}
+
+export interface SkillUsageEntry {
+  skill_name: string
+  skill_scope: 'universal' | 'project' | 'unknown'
+  count: number
+  success_rate: number
+  avg_duration_ms: number | null
+}
+
+export interface MCPUsageEntry {
+  mcp_server: string
+  tool_count: number
+  total_calls: number
+  success_rate: number
+}
+
+export interface ActivityDetail {
+  id: string
+  session_id: string | null
+  event_type: string
+  tool_name: string | null
+  tool_input_full: string | null
+  tool_output_full: string | null
+  success: boolean
+  error_message: string | null
+  duration_ms: number | null
+  file_path: string | null
+  timestamp: string
+  command_name: string | null
+  command_scope: string | null
+  mcp_server: string | null
+  skill_name: string | null
+}
+
+export async function getCommandUsage(
+  dbPath: string,
+  scope?: 'universal' | 'project',
+  days: number = 30
+): Promise<CommandUsageEntry[]> {
+  let url = `/stats/command-usage?project=${encodeURIComponent(dbPath)}&days=${days}`
+  if (scope) {
+    url += `&scope=${scope}`
+  }
+  const response = await api.get<CommandUsageEntry[]>(url)
+  return response.data
+}
+
+export async function getSkillUsage(
+  dbPath: string,
+  scope?: 'universal' | 'project',
+  days: number = 30
+): Promise<SkillUsageEntry[]> {
+  let url = `/stats/skill-usage?project=${encodeURIComponent(dbPath)}&days=${days}`
+  if (scope) {
+    url += `&scope=${scope}`
+  }
+  const response = await api.get<SkillUsageEntry[]>(url)
+  return response.data
+}
+
+export async function getMcpUsage(
+  dbPath: string,
+  days: number = 30
+): Promise<MCPUsageEntry[]> {
+  const response = await api.get<MCPUsageEntry[]>(
+    `/stats/mcp-usage?project=${encodeURIComponent(dbPath)}&days=${days}`
+  )
+  return response.data
+}
+
+export async function getActivityDetail(
+  dbPath: string,
+  activityId: string
+): Promise<ActivityDetail> {
+  const response = await api.get<ActivityDetail>(
+    `/activities/${activityId}?project=${encodeURIComponent(dbPath)}`
+  )
+  return response.data
+}
+
 // --- Session Context ---
 
 export interface RecentSession {

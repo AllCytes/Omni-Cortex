@@ -29,6 +29,11 @@ class ActivityCreate(BaseModel):
     error_message: Optional[str] = Field(None, description="Error message if failed")
     file_path: Optional[str] = Field(None, description="File path if relevant")
     agent_id: Optional[str] = Field(None, description="Agent ID")
+    # Command analytics fields
+    command_name: Optional[str] = Field(None, description="Slash command name (e.g., 'commit', 'build')")
+    command_scope: Optional[str] = Field(None, description="Command scope: 'universal' or 'project'")
+    mcp_server: Optional[str] = Field(None, description="MCP server name (e.g., 'grep-mcp')")
+    skill_name: Optional[str] = Field(None, description="Skill name from Skill tool calls")
 
 
 class Activity(BaseModel):
@@ -48,6 +53,11 @@ class Activity(BaseModel):
     project_path: Optional[str] = None
     file_path: Optional[str] = None
     metadata: Optional[dict[str, Any]] = None
+    # Command analytics fields
+    command_name: Optional[str] = None
+    command_scope: Optional[str] = None
+    mcp_server: Optional[str] = None
+    skill_name: Optional[str] = None
 
 
 def create_activity(
@@ -99,8 +109,9 @@ def create_activity(
         INSERT INTO activities (
             id, session_id, agent_id, timestamp, event_type,
             tool_name, tool_input, tool_output, duration_ms,
-            success, error_message, project_path, file_path
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            success, error_message, project_path, file_path,
+            command_name, command_scope, mcp_server, skill_name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             activity_id,
@@ -116,6 +127,10 @@ def create_activity(
             data.error_message,
             project_path,
             data.file_path,
+            data.command_name,
+            data.command_scope,
+            data.mcp_server,
+            data.skill_name,
         ),
     )
 
@@ -135,6 +150,10 @@ def create_activity(
         error_message=data.error_message,
         project_path=project_path,
         file_path=data.file_path,
+        command_name=data.command_name,
+        command_scope=data.command_scope,
+        mcp_server=data.mcp_server,
+        skill_name=data.skill_name,
     )
 
 
@@ -220,6 +239,9 @@ def _row_to_activity(row: sqlite3.Row) -> Activity:
     if metadata and isinstance(metadata, str):
         metadata = json.loads(metadata)
 
+    # Get row keys for checking column existence (for older databases)
+    row_keys = row.keys() if hasattr(row, "keys") else []
+
     return Activity(
         id=row["id"],
         session_id=row["session_id"],
@@ -235,4 +257,9 @@ def _row_to_activity(row: sqlite3.Row) -> Activity:
         project_path=row["project_path"],
         file_path=row["file_path"],
         metadata=metadata,
+        # Command analytics fields (may not exist in older databases)
+        command_name=row["command_name"] if "command_name" in row_keys else None,
+        command_scope=row["command_scope"] if "command_scope" in row_keys else None,
+        mcp_server=row["mcp_server"] if "mcp_server" in row_keys else None,
+        skill_name=row["skill_name"] if "skill_name" in row_keys else None,
     )

@@ -729,6 +729,214 @@ def get_relationship_graph(db_path: str, center_id: Optional[str] = None, depth:
     return {"nodes": list(nodes.values()), "edges": edges}
 
 
+# --- Command Analytics Functions ---
+
+
+def get_command_usage(db_path: str, scope: Optional[str] = None, days: int = 30) -> list[dict]:
+    """Get slash command usage statistics aggregated by command_name.
+
+    Args:
+        db_path: Path to database
+        scope: Filter by scope ('universal', 'project', or None for all)
+        days: Number of days to look back
+
+    Returns:
+        List of command usage entries with counts and success rates
+    """
+    conn = get_connection(db_path)
+
+    # Check if command_name column exists
+    columns = conn.execute("PRAGMA table_info(activities)").fetchall()
+    column_names = [col[1] for col in columns]
+    if "command_name" not in column_names:
+        conn.close()
+        return []
+
+    query = """
+        SELECT
+            command_name,
+            command_scope,
+            COUNT(*) as count,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as success_rate,
+            AVG(duration_ms) as avg_duration_ms
+        FROM activities
+        WHERE command_name IS NOT NULL
+          AND command_name != ''
+          AND timestamp >= date('now', ?)
+    """
+    params = [f'-{days} days']
+
+    if scope:
+        query += " AND command_scope = ?"
+        params.append(scope)
+
+    query += " GROUP BY command_name, command_scope ORDER BY count DESC"
+
+    cursor = conn.execute(query, params)
+    result = [
+        {
+            "command_name": row["command_name"],
+            "command_scope": row["command_scope"] or "unknown",
+            "count": row["count"],
+            "success_rate": round(row["success_rate"], 2) if row["success_rate"] else 1.0,
+            "avg_duration_ms": round(row["avg_duration_ms"]) if row["avg_duration_ms"] else None,
+        }
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return result
+
+
+def get_skill_usage(db_path: str, scope: Optional[str] = None, days: int = 30) -> list[dict]:
+    """Get skill usage statistics aggregated by skill_name.
+
+    Args:
+        db_path: Path to database
+        scope: Filter by scope ('universal', 'project', or None for all)
+        days: Number of days to look back
+
+    Returns:
+        List of skill usage entries with counts and success rates
+    """
+    conn = get_connection(db_path)
+
+    # Check if skill_name column exists
+    columns = conn.execute("PRAGMA table_info(activities)").fetchall()
+    column_names = [col[1] for col in columns]
+    if "skill_name" not in column_names:
+        conn.close()
+        return []
+
+    query = """
+        SELECT
+            skill_name,
+            command_scope,
+            COUNT(*) as count,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as success_rate,
+            AVG(duration_ms) as avg_duration_ms
+        FROM activities
+        WHERE skill_name IS NOT NULL
+          AND skill_name != ''
+          AND timestamp >= date('now', ?)
+    """
+    params = [f'-{days} days']
+
+    if scope:
+        query += " AND command_scope = ?"
+        params.append(scope)
+
+    query += " GROUP BY skill_name, command_scope ORDER BY count DESC"
+
+    cursor = conn.execute(query, params)
+    result = [
+        {
+            "skill_name": row["skill_name"],
+            "skill_scope": row["command_scope"] or "unknown",
+            "count": row["count"],
+            "success_rate": round(row["success_rate"], 2) if row["success_rate"] else 1.0,
+            "avg_duration_ms": round(row["avg_duration_ms"]) if row["avg_duration_ms"] else None,
+        }
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return result
+
+
+def get_mcp_usage(db_path: str, days: int = 30) -> list[dict]:
+    """Get MCP server usage statistics.
+
+    Args:
+        db_path: Path to database
+        days: Number of days to look back
+
+    Returns:
+        List of MCP server usage entries with tool counts and call totals
+    """
+    conn = get_connection(db_path)
+
+    # Check if mcp_server column exists
+    columns = conn.execute("PRAGMA table_info(activities)").fetchall()
+    column_names = [col[1] for col in columns]
+    if "mcp_server" not in column_names:
+        conn.close()
+        return []
+
+    query = """
+        SELECT
+            mcp_server,
+            COUNT(DISTINCT tool_name) as tool_count,
+            COUNT(*) as total_calls,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as success_rate
+        FROM activities
+        WHERE mcp_server IS NOT NULL
+          AND mcp_server != ''
+          AND timestamp >= date('now', ?)
+        GROUP BY mcp_server
+        ORDER BY total_calls DESC
+    """
+    cursor = conn.execute(query, (f'-{days} days',))
+    result = [
+        {
+            "mcp_server": row["mcp_server"],
+            "tool_count": row["tool_count"],
+            "total_calls": row["total_calls"],
+            "success_rate": round(row["success_rate"], 2) if row["success_rate"] else 1.0,
+        }
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return result
+
+
+def get_activity_detail(db_path: str, activity_id: str) -> Optional[dict]:
+    """Get full activity details including complete input/output.
+
+    Args:
+        db_path: Path to database
+        activity_id: Activity ID
+
+    Returns:
+        Full activity details or None if not found
+    """
+    conn = get_connection(db_path)
+    cursor = conn.execute("SELECT * FROM activities WHERE id = ?", (activity_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return None
+
+    # Get column names for safe access
+    column_names = [description[0] for description in cursor.description]
+
+    result = {
+        "id": row["id"],
+        "session_id": row["session_id"],
+        "event_type": row["event_type"],
+        "tool_name": row["tool_name"],
+        "tool_input_full": row["tool_input"],
+        "tool_output_full": row["tool_output"],
+        "success": bool(row["success"]),
+        "error_message": row["error_message"],
+        "duration_ms": row["duration_ms"],
+        "file_path": row["file_path"],
+        "timestamp": row["timestamp"],
+    }
+
+    # Add command analytics fields if they exist
+    if "command_name" in column_names:
+        result["command_name"] = row["command_name"]
+    if "command_scope" in column_names:
+        result["command_scope"] = row["command_scope"]
+    if "mcp_server" in column_names:
+        result["mcp_server"] = row["mcp_server"]
+    if "skill_name" in column_names:
+        result["skill_name"] = row["skill_name"]
+
+    conn.close()
+    return result
+
+
 def create_memory(
     db_path: str,
     content: str,

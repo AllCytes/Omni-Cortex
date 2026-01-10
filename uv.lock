@@ -985,7 +985,7 @@ wheels = [
 
 [[package]]
 name = "omni-cortex"
-version = "1.0.8"
+version = "1.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

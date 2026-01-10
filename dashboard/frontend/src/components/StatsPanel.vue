@@ -6,6 +6,9 @@ import { Database, Tag, TrendingUp, Eye } from 'lucide-vue-next'
 import ActivityHeatmap from '@/components/charts/ActivityHeatmap.vue'
 import ToolUsageChart from '@/components/charts/ToolUsageChart.vue'
 import MemoryGrowthChart from '@/components/charts/MemoryGrowthChart.vue'
+import CommandUsageChart from '@/components/charts/CommandUsageChart.vue'
+import SkillUsageChart from '@/components/charts/SkillUsageChart.vue'
+import MCPUsageChart from '@/components/charts/MCPUsageChart.vue'
 
 const store = useDashboardStore()
 
@@ -140,5 +143,10 @@ function getStatusColor(status: string): string {
     <ActivityHeatmap class="lg:col-span-3" />
     <ToolUsageChart />
     <MemoryGrowthChart class="md:col-span-2" />
+
+    <!-- Command Analytics Section -->
+    <CommandUsageChart />
+    <SkillUsageChart />
+    <MCPUsageChart />
   </div>
 </template>

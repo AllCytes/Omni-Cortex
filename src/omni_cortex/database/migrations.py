@@ -11,10 +11,19 @@ from ..utils.timestamps import now_iso
 
 # Migration definitions: version -> SQL
 MIGRATIONS: dict[str, str] = {
-    # Future migrations go here
-    # "1.1": """
-    #     ALTER TABLE memories ADD COLUMN new_field TEXT;
-    # """,
+    # Command analytics columns for slash command/skill tracking
+    "1.1": """
+        -- Add command analytics columns to activities table
+        ALTER TABLE activities ADD COLUMN command_name TEXT;
+        ALTER TABLE activities ADD COLUMN command_scope TEXT;
+        ALTER TABLE activities ADD COLUMN mcp_server TEXT;
+        ALTER TABLE activities ADD COLUMN skill_name TEXT;
+
+        -- Create indexes for new columns
+        CREATE INDEX IF NOT EXISTS idx_activities_command ON activities(command_name);
+        CREATE INDEX IF NOT EXISTS idx_activities_mcp ON activities(mcp_server);
+        CREATE INDEX IF NOT EXISTS idx_activities_skill ON activities(skill_name);
+    """,
 }
 
 

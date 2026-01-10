@@ -33,6 +33,11 @@ class LogActivityInput(BaseModel):
     error_message: Optional[str] = Field(None, description="Error message if failed")
     file_path: Optional[str] = Field(None, description="Relevant file path")
     agent_id: Optional[str] = Field(None, description="Agent ID")
+    # Command analytics fields
+    command_name: Optional[str] = Field(None, description="Slash command name")
+    command_scope: Optional[str] = Field(None, description="'universal' or 'project'")
+    mcp_server: Optional[str] = Field(None, description="MCP server name")
+    skill_name: Optional[str] = Field(None, description="Skill name")
 
 
 class GetActivitiesInput(BaseModel):
@@ -91,6 +96,26 @@ def register_activity_tools(mcp: FastMCP) -> None:
             project_path = str(get_project_path())
             session_id = get_session_id()
 
+            # Auto-detect command analytics if not provided
+            command_name = params.command_name
+            command_scope = params.command_scope
+            mcp_server = params.mcp_server
+            skill_name = params.skill_name
+
+            # Extract skill info from Skill tool calls
+            if params.tool_name == "Skill" and params.tool_input:
+                extracted_skill, extracted_scope = _extract_skill_info(
+                    params.tool_input, project_path
+                )
+                if extracted_skill:
+                    skill_name = skill_name or extracted_skill
+                    command_scope = command_scope or extracted_scope
+
+            # Extract MCP server from tool name (mcp__servername__toolname pattern)
+            if params.tool_name and params.tool_name.startswith("mcp__"):
+                extracted_mcp = _extract_mcp_server(params.tool_name)
+                mcp_server = mcp_server or extracted_mcp
+
             activity_data = ActivityCreate(
                 event_type=params.event_type,
                 tool_name=params.tool_name,
@@ -101,6 +126,10 @@ def register_activity_tools(mcp: FastMCP) -> None:
                 error_message=params.error_message,
                 file_path=params.file_path,
                 agent_id=params.agent_id,
+                command_name=command_name,
+                command_scope=command_scope,
+                mcp_server=mcp_server,
+                skill_name=skill_name,
             )
 
             activity = create_activity(
@@ -230,3 +259,63 @@ def register_activity_tools(mcp: FastMCP) -> None:
 
         except Exception as e:
             return f"Error getting timeline: {e}"
+
+
+# === Helper Functions for Command Analytics ===
+
+
+def _extract_skill_info(tool_input: str, project_path: str) -> tuple[Optional[str], Optional[str]]:
+    """Extract skill name and scope from Skill tool input.
+
+    Args:
+        tool_input: JSON string of tool input
+        project_path: Current project path for scope detection
+
+    Returns:
+        Tuple of (skill_name, scope) where scope is 'universal' or 'project'
+    """
+    try:
+        input_data = json.loads(tool_input)
+        skill_name = input_data.get("skill", "")
+        if not skill_name:
+            return None, None
+
+        # Determine scope by checking file locations
+        from pathlib import Path
+
+        # Check project-specific commands first
+        project_cmd = Path(project_path) / ".claude" / "commands" / f"{skill_name}.md"
+        if project_cmd.exists():
+            return skill_name, "project"
+
+        # Check universal commands
+        universal_cmd = Path.home() / ".claude" / "commands" / f"{skill_name}.md"
+        if universal_cmd.exists():
+            return skill_name, "universal"
+
+        # Default to unknown scope if skill exists but location is unclear
+        return skill_name, "unknown"
+
+    except (json.JSONDecodeError, TypeError, KeyError):
+        return None, None
+
+
+def _extract_mcp_server(tool_name: str) -> Optional[str]:
+    """Extract MCP server name from tool name.
+
+    Tool names follow the pattern: mcp__servername__toolname
+
+    Args:
+        tool_name: Full tool name
+
+    Returns:
+        MCP server name or None
+    """
+    if not tool_name or not tool_name.startswith("mcp__"):
+        return None
+
+    parts = tool_name.split("__")
+    if len(parts) >= 3:
+        return parts[1]  # Server name is the second part
+
+    return None

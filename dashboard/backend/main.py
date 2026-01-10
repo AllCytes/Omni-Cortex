@@ -21,8 +21,11 @@ from database import (
     bulk_update_memory_status,
     delete_memory,
     get_activities,
+    get_activity_detail,
     get_activity_heatmap,
     get_all_tags,
+    get_command_usage,
+    get_mcp_usage,
     get_memories,
     get_memories_needing_review,
     get_memory_by_id,
@@ -32,6 +35,7 @@ from database import (
     get_relationship_graph,
     get_relationships,
     get_sessions,
+    get_skill_usage,
     get_timeline,
     get_tool_usage,
     get_type_distribution,
@@ -505,6 +509,63 @@ async def get_memory_growth_endpoint(
         raise HTTPException(status_code=404, detail="Database not found")
 
     return get_memory_growth(project, days)
+
+
+# --- Command Analytics Endpoints ---
+
+
+@app.get("/api/stats/command-usage")
+async def get_command_usage_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    scope: Optional[str] = Query(None, description="Filter by scope: 'universal' or 'project'"),
+    days: int = Query(30, ge=1, le=365),
+):
+    """Get slash command usage statistics."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_command_usage(project, scope, days)
+
+
+@app.get("/api/stats/skill-usage")
+async def get_skill_usage_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    scope: Optional[str] = Query(None, description="Filter by scope: 'universal' or 'project'"),
+    days: int = Query(30, ge=1, le=365),
+):
+    """Get skill usage statistics."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_skill_usage(project, scope, days)
+
+
+@app.get("/api/stats/mcp-usage")
+async def get_mcp_usage_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    days: int = Query(30, ge=1, le=365),
+):
+    """Get MCP server usage statistics."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    return get_mcp_usage(project, days)
+
+
+@app.get("/api/activities/{activity_id}")
+async def get_activity_detail_endpoint(
+    activity_id: str,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Get full activity details including complete input/output."""
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    activity = get_activity_detail(project, activity_id)
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    return activity
 
 
 # --- Session Context Endpoints ---
