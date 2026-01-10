@@ -208,6 +208,83 @@ export async function askAboutMemories(
   }
 }
 
+// Streaming chat response using Server-Sent Events
+export function streamChatResponse(
+  dbPath: string,
+  question: string,
+  onChunk: (text: string) => void,
+  onSources: (sources: ChatSource[]) => void,
+  onDone: () => void,
+  onError: (error: Error) => void
+): () => void {
+  const url = `/api/chat/stream?project=${encodeURIComponent(dbPath)}&question=${encodeURIComponent(question)}`
+
+  const eventSource = new EventSource(url)
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+
+      switch (data.type) {
+        case 'sources':
+          onSources(data.data)
+          break
+        case 'chunk':
+          onChunk(data.data)
+          break
+        case 'done':
+          eventSource.close()
+          onDone()
+          break
+        case 'error':
+          eventSource.close()
+          onError(new Error(data.data || 'Stream error'))
+          break
+      }
+    } catch (e) {
+      console.error('Failed to parse SSE event:', e)
+    }
+  }
+
+  eventSource.onerror = () => {
+    eventSource.close()
+    onError(new Error('Stream connection failed'))
+  }
+
+  // Return cleanup function
+  return () => eventSource.close()
+}
+
+// Save conversation as memory
+export interface ConversationMessage {
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+}
+
+export interface ConversationSaveRequest {
+  messages: ConversationMessage[]
+  referenced_memory_ids?: string[]
+  importance?: number
+}
+
+export interface ConversationSaveResponse {
+  memory_id: string
+  summary: string
+}
+
+export async function saveConversation(
+  dbPath: string,
+  conversation: ConversationSaveRequest
+): Promise<ConversationSaveResponse> {
+  const response = await api.post<ConversationSaveResponse>(
+    `/chat/save?project=${encodeURIComponent(dbPath)}`,
+    conversation,
+    { timeout: 60000 }
+  )
+  return response.data
+}
+
 // --- Stats Endpoints for Charts ---
 
 export interface ActivityHeatmapEntry {

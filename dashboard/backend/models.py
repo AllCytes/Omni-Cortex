@@ -163,3 +163,26 @@ class ChatResponse(BaseModel):
     answer: str
     sources: list[ChatSource]
     error: Optional[str] = None
+
+
+class ConversationMessage(BaseModel):
+    """A message in a conversation."""
+
+    role: str  # 'user' or 'assistant'
+    content: str
+    timestamp: str
+
+
+class ConversationSaveRequest(BaseModel):
+    """Request to save a conversation as memory."""
+
+    messages: list[ConversationMessage]
+    referenced_memory_ids: Optional[list[str]] = None
+    importance: Optional[int] = Field(default=60, ge=1, le=100)
+
+
+class ConversationSaveResponse(BaseModel):
+    """Response after saving a conversation."""
+
+    memory_id: str
+    summary: str

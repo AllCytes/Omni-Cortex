@@ -39,7 +39,7 @@ from database import (
     update_memory,
 )
 from logging_config import log_success, log_error
-from models import ChatRequest, ChatResponse, FilterParams, MemoryUpdate, ProjectInfo, ProjectRegistration
+from models import ChatRequest, ChatResponse, ConversationSaveRequest, ConversationSaveResponse, FilterParams, MemoryUpdate, ProjectInfo, ProjectRegistration
 from project_config import (
     load_config,
     add_registered_project,
@@ -570,6 +570,63 @@ async def chat_with_memories(
         raise
     except Exception as e:
         log_error("/api/chat", e, question=request.question[:50])
+        raise
+
+
+@app.get("/api/chat/stream")
+async def stream_chat(
+    project: str = Query(..., description="Path to the database file"),
+    question: str = Query(..., description="The question to ask"),
+    max_memories: int = Query(10, ge=1, le=50),
+):
+    """SSE endpoint for streaming chat responses."""
+    from fastapi.responses import StreamingResponse
+
+    if not Path(project).exists():
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    async def event_generator():
+        try:
+            async for event in chat_service.stream_ask_about_memories(project, question, max_memories):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@app.post("/api/chat/save", response_model=ConversationSaveResponse)
+async def save_chat_conversation(
+    request: ConversationSaveRequest,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Save a chat conversation as a memory."""
+    try:
+        if not Path(project).exists():
+            log_error("/api/chat/save", FileNotFoundError("Database not found"))
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        result = await chat_service.save_conversation(
+            project,
+            [msg.model_dump() for msg in request.messages],
+            request.referenced_memory_ids,
+            request.importance or 60,
+        )
+
+        log_success("/api/chat/save", memory_id=result["memory_id"], messages=len(request.messages))
+        return ConversationSaveResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/chat/save", e)
         raise
 
 

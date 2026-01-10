@@ -727,3 +727,81 @@ def get_relationship_graph(db_path: str, center_id: Optional[str] = None, depth:
         })
 
     return {"nodes": list(nodes.values()), "edges": edges}
+
+
+def create_memory(
+    db_path: str,
+    content: str,
+    memory_type: str = "other",
+    context: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    importance_score: int = 50,
+    related_memory_ids: Optional[list[str]] = None,
+) -> str:
+    """Create a new memory and return its ID.
+
+    Args:
+        db_path: Path to the database file
+        content: Memory content
+        memory_type: Type of memory (e.g., 'decision', 'solution', 'conversation')
+        context: Additional context
+        tags: List of tags
+        importance_score: Importance score (1-100)
+        related_memory_ids: IDs of related memories to create relationships with
+
+    Returns:
+        The ID of the created memory
+    """
+    import uuid
+
+    conn = get_write_connection(db_path)
+
+    # Generate ID
+    memory_id = f"mem_{int(datetime.now().timestamp() * 1000)}_{uuid.uuid4().hex[:8]}"
+    now = datetime.now().isoformat()
+
+    # Insert memory
+    conn.execute(
+        """
+        INSERT INTO memories (id, content, context, type, status, importance_score, access_count, created_at, last_accessed, tags)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            memory_id,
+            content,
+            context,
+            memory_type,
+            "fresh",
+            importance_score,
+            0,
+            now,
+            now,
+            json.dumps(tags) if tags else None,
+        ),
+    )
+
+    # Create relationships if related_memory_ids provided
+    if related_memory_ids:
+        # Check if memory_relationships table exists
+        table_check = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='memory_relationships'"
+        ).fetchone()
+
+        if table_check:
+            for related_id in related_memory_ids:
+                try:
+                    conn.execute(
+                        """
+                        INSERT INTO memory_relationships (source_memory_id, target_memory_id, relationship_type, strength)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (memory_id, related_id, "derived_from", 0.8),
+                    )
+                except Exception:
+                    # Ignore if related memory doesn't exist
+                    pass
+
+    conn.commit()
+    conn.close()
+
+    return memory_id
