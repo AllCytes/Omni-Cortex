@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+import os
 import traceback
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -10,12 +11,23 @@ from pathlib import Path
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+
+# Rate limiting imports (optional - graceful degradation if not installed)
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    RATE_LIMITING_AVAILABLE = True
+except ImportError:
+    RATE_LIMITING_AVAILABLE = False
+    Limiter = None
 
 from database import (
     bulk_update_memory_status,
@@ -70,6 +82,48 @@ from project_scanner import scan_projects
 from websocket_manager import manager
 import chat_service
 from image_service import image_service, ImagePreset, SingleImageRequest
+from security import PathValidator, get_cors_config, IS_PRODUCTION
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # Prevent clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+
+        # XSS protection (legacy browsers)
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        # Content Security Policy
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "  # Vue needs these
+            "style-src 'self' 'unsafe-inline'; "  # Tailwind needs inline
+            "img-src 'self' data: blob: https:; "  # Allow AI-generated images
+            "connect-src 'self' ws: wss: https://generativelanguage.googleapis.com; "
+            "font-src 'self'; "
+            "frame-ancestors 'none';"
+        )
+
+        # HSTS (only in production with HTTPS)
+        if IS_PRODUCTION and os.getenv("SSL_CERTFILE"):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+        return response
+
+
+def validate_project_path(project: str = Query(..., description="Path to the database file")) -> Path:
+    """Validate project database path - dependency for endpoints."""
+    try:
+        return PathValidator.validate_project_path(project)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 class DatabaseChangeHandler(FileSystemEventHandler):
@@ -137,13 +191,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS for frontend dev server
+# Add security headers middleware (MUST come before CORS)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Rate limiting (if available)
+if RATE_LIMITING_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+else:
+    limiter = None
+
+# CORS configuration (environment-aware)
+cors_config = get_cors_config()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=cors_config["allow_origins"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=cors_config["allow_methods"],
+    allow_headers=cors_config["allow_headers"],
 )
 
 # Static files for production build
@@ -971,15 +1037,15 @@ async def serve_root():
 
 @app.get("/{path:path}")
 async def serve_spa(path: str):
-    """Catch-all route to serve SPA for client-side routing."""
+    """Catch-all route to serve SPA for client-side routing with path traversal protection."""
     # Skip API routes and known paths
     if path.startswith(("api/", "ws", "health", "docs", "openapi", "redoc")):
         raise HTTPException(status_code=404, detail="Not found")
 
-    # Check if it's a static file
-    file_path = DIST_DIR / path
-    if file_path.exists() and file_path.is_file():
-        return FileResponse(str(file_path))
+    # Check if it's a static file (with path traversal protection)
+    safe_path = PathValidator.is_safe_static_path(DIST_DIR, path)
+    if safe_path:
+        return FileResponse(str(safe_path))
 
     # Otherwise serve index.html for SPA routing
     index_file = DIST_DIR / "index.html"

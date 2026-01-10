@@ -37,6 +37,8 @@ import {
 import ImageGenerationPanel from './ImageGenerationPanel.vue'
 import { marked } from 'marked'
 import SourceTooltip from './SourceTooltip.vue'
+import { sanitizeMarkdown } from '@/utils/sanitize'
+import { logger } from '@/utils/logger'
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -366,7 +368,8 @@ function renderMarkdown(content: string, sources?: ChatSource[]): string {
     return match
   })
 
-  return marked.parse(processed) as string
+  const rawHtml = marked.parse(processed) as string
+  return sanitizeMarkdown(rawHtml)
 }
 
 function handleContentClick(event: MouseEvent, sources?: ChatSource[]) {
@@ -392,7 +395,7 @@ async function copyMessage(message: Message) {
       message.copiedRecently = false
     }, 2000)
   } catch (e) {
-    console.error('Failed to copy:', e)
+    logger.error('Failed to copy:', e)
   }
 }
 
@@ -499,7 +502,7 @@ async function handleSaveConversation() {
     isSaved.value = true
     savedMemoryId.value = result.memory_id
   } catch (e) {
-    console.error('Failed to save conversation:', e)
+    logger.error('Failed to save conversation:', e)
   } finally {
     isSaving.value = false
   }

@@ -1,6 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import type { WSEvent, Memory } from '@/types'
+import { logger } from '@/utils/logger'
 
 export function useWebSocket() {
   const store = useDashboardStore()
@@ -20,11 +21,11 @@ export function useWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const wsUrl = `${protocol}//${window.location.host}/ws`
 
-    console.log('[WS] Connecting to:', wsUrl)
+    logger.log('[WS] Connecting to:', wsUrl)
     ws.value = new WebSocket(wsUrl)
 
     ws.value.onopen = () => {
-      console.log('[WS] Connected')
+      logger.log('[WS] Connected')
       store.setConnected(true)
       reconnectAttempts.value = 0
 
@@ -41,28 +42,28 @@ export function useWebSocket() {
         const data: WSEvent = JSON.parse(event.data)
         handleEvent(data)
       } catch (e) {
-        console.error('[WS] Failed to parse message:', e)
+        logger.error('[WS] Failed to parse message:', e)
       }
     }
 
     ws.value.onclose = () => {
-      console.log('[WS] Disconnected')
+      logger.log('[WS] Disconnected')
       store.setConnected(false)
       cleanup()
       attemptReconnect()
     }
 
     ws.value.onerror = (error) => {
-      console.error('[WS] Error:', error)
+      logger.error('[WS] Error:', error)
     }
   }
 
   function handleEvent(event: WSEvent) {
-    console.log('[WS] Event:', event.event_type, event.data)
+    logger.log('[WS] Event:', event.event_type, event.data)
 
     switch (event.event_type) {
       case 'connected':
-        console.log('[WS] Connection confirmed, client ID:', event.data.client_id)
+        logger.log('[WS] Connection confirmed, client ID:', event.data.client_id)
         break
 
       case 'pong':
@@ -86,18 +87,18 @@ export function useWebSocket() {
         break
 
       default:
-        console.log('[WS] Unknown event type:', event.event_type)
+        logger.log('[WS] Unknown event type:', event.event_type)
     }
   }
 
   function attemptReconnect() {
     if (reconnectAttempts.value >= maxReconnectAttempts) {
-      console.log('[WS] Max reconnect attempts reached')
+      logger.log('[WS] Max reconnect attempts reached')
       return
     }
 
     reconnectAttempts.value++
-    console.log(`[WS] Reconnecting (attempt ${reconnectAttempts.value}/${maxReconnectAttempts})...`)
+    logger.log(`[WS] Reconnecting (attempt ${reconnectAttempts.value}/${maxReconnectAttempts})...`)
 
     reconnectTimeout = setTimeout(() => {
       connect()

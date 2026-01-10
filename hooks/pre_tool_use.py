@@ -18,11 +18,53 @@ Hook configuration for settings.json:
 """
 
 import json
+import re
 import sys
 import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+# Patterns for sensitive field names that should be redacted
+SENSITIVE_FIELD_PATTERNS = [
+    r'(?i)(api[_-]?key|apikey)',
+    r'(?i)(password|passwd|pwd)',
+    r'(?i)(secret|token|credential)',
+    r'(?i)(auth[_-]?token|access[_-]?token)',
+    r'(?i)(private[_-]?key|ssh[_-]?key)',
+]
+
+
+def redact_sensitive_fields(data: dict) -> dict:
+    """Redact sensitive fields from a dictionary for safe logging.
+
+    Recursively processes nested dicts and lists.
+    """
+    if not isinstance(data, dict):
+        return data
+
+    result = {}
+    for key, value in data.items():
+        # Check if key matches sensitive patterns
+        is_sensitive = any(
+            re.search(pattern, str(key))
+            for pattern in SENSITIVE_FIELD_PATTERNS
+        )
+
+        if is_sensitive:
+            result[key] = '[REDACTED]'
+        elif isinstance(value, dict):
+            result[key] = redact_sensitive_fields(value)
+        elif isinstance(value, list):
+            result[key] = [
+                redact_sensitive_fields(item) if isinstance(item, dict) else item
+                for item in value
+            ]
+        else:
+            result[key] = value
+
+    return result
 
 
 def get_db_path() -> Path:
@@ -122,6 +164,9 @@ def main():
         db_path = get_db_path()
         conn = ensure_database(db_path)
 
+        # Redact sensitive fields before logging
+        safe_input = redact_sensitive_fields(tool_input) if isinstance(tool_input, dict) else tool_input
+
         # Insert activity record
         cursor = conn.cursor()
         cursor.execute(
@@ -138,7 +183,7 @@ def main():
                 datetime.now(timezone.utc).isoformat(),
                 "pre_tool_use",
                 tool_name,
-                truncate(json.dumps(tool_input, default=str)),
+                truncate(json.dumps(safe_input, default=str)),
                 project_path,
             ),
         )

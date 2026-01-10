@@ -12,6 +12,30 @@ import sys
 from datetime import datetime
 
 
+def sanitize_log_input(value: str, max_length: int = 200) -> str:
+    """Sanitize user input for safe logging.
+
+    Prevents log injection by:
+    - Escaping newlines
+    - Limiting length
+    - Removing control characters
+    """
+    if not isinstance(value, str):
+        value = str(value)
+
+    # Remove control characters except spaces
+    sanitized = ''.join(c if c.isprintable() or c == ' ' else '?' for c in value)
+
+    # Escape potential log injection patterns
+    sanitized = sanitized.replace('\n', '\\n').replace('\r', '\\r')
+
+    # Truncate
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length] + '...'
+
+    return sanitized
+
+
 class StructuredFormatter(logging.Formatter):
     """Custom formatter for structured agent-readable logs."""
 
@@ -66,8 +90,10 @@ def log_success(endpoint: str, **metrics):
         log_success("/api/memories", count=150, time_ms=45)
         # Output: [SUCCESS] /api/memories - count=150, time_ms=45
     """
-    metric_str = ", ".join(f"{k}={v}" for k, v in metrics.items())
-    logger.info(f"[SUCCESS] {endpoint} - {metric_str}")
+    # Sanitize all metric values to prevent log injection
+    safe_metrics = {k: sanitize_log_input(str(v)) for k, v in metrics.items()}
+    metric_str = ", ".join(f"{k}={v}" for k, v in safe_metrics.items())
+    logger.info(f"[SUCCESS] {sanitize_log_input(endpoint)} - {metric_str}")
 
 
 def log_error(endpoint: str, exception: Exception, **context):
@@ -82,10 +108,14 @@ def log_error(endpoint: str, exception: Exception, **context):
         log_error("/api/memories", exc, project="path/to/db")
         # Output includes exception type, message, and full traceback
     """
-    context_str = ", ".join(f"{k}={v}" for k, v in context.items()) if context else ""
-    error_msg = f"[ERROR] {endpoint} - Exception: {type(exception).__name__}"
+    # Sanitize context values to prevent log injection
+    safe_context = {k: sanitize_log_input(str(v)) for k, v in context.items()}
+    context_str = ", ".join(f"{k}={v}" for k, v in safe_context.items()) if safe_context else ""
+
+    error_msg = f"[ERROR] {sanitize_log_input(endpoint)} - Exception: {type(exception).__name__}"
     if context_str:
         error_msg += f" - {context_str}"
+    # Note: str(exception) is not sanitized as it's from the system, not user input
     error_msg += f"\n[ERROR] Details: {str(exception)}"
 
     # Log with exception info to include traceback
