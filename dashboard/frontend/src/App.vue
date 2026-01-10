@@ -172,7 +172,7 @@ function handleNavigateToMemory(_memoryId: string) {
       </div>
 
       <!-- Chat Tab -->
-      <div v-else-if="activeTab === 'chat'" class="max-w-4xl mx-auto h-[calc(100vh-200px)]">
+      <div v-else-if="activeTab === 'chat'" class="max-w-6xl mx-auto h-[calc(100vh-200px)]">
         <ChatPanel @navigate-to-memory="handleNavigateToMemory" />
       </div>
     </main>

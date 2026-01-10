@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #ffffff; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header { background: #f0f4ff; padding: 12pt 25pt;
+  border-bottom: 2pt solid #667eea; }
+.content { flex: 1; padding: 12pt 25pt; }
+.table-wrapper { width: 100%; }
+.row { display: flex; border-bottom: 1pt solid #e0e5f0; }
+.row-header { background: #667eea; border-radius: 6pt 6pt 0 0; }
+.row-even { background: #fafbff; }
+.cell { flex: 1; padding: 6pt 8pt; }
+.cell-label { flex: 0.9; background: #f0f4ff; border-right: 2pt solid #667eea; }
+.legend { display: flex; gap: 20pt; margin-top: 10pt; padding: 8pt 12pt;
+  background: #fafbff; border-radius: 4pt; }
+.legend-item { display: flex; align-items: center; gap: 5pt; }
+.legend-dot { width: 10pt; height: 10pt; border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 style="color: #1a1a2e; font-size: 20pt; margin: 0;">Comparison with Other Memory MCPs</h1>
+</div>
+<div class="content">
+  <div class="table-wrapper">
+    <div class="row row-header">
+      <div class="cell cell-label"><p style="color: #ffffff; font-weight: bold; font-size: 8pt; margin: 0;">Feature</p></div>
+      <div class="cell"><p style="color: #ffffff; font-weight: bold; font-size: 8pt; margin: 0;">Omni-Cortex</p></div>
+      <div class="cell"><p style="color: #ffffff; font-weight: bold; font-size: 8pt; margin: 0;">memory-bank-mcp</p></div>
+      <div class="cell"><p style="color: #ffffff; font-weight: bold; font-size: 8pt; margin: 0;">basic-memory</p></div>
+      <div class="cell"><p style="color: #ffffff; font-weight: bold; font-size: 8pt; margin: 0;">knowledge-graph</p></div>
+    </div>
+    <div class="row">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Language</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">Python</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">TypeScript</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">Python</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">TypeScript</p></div>
+    </div>
+    <div class="row row-even">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Storage</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">SQLite</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">JSON files</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">Markdown</p></div>
+      <div class="cell"><p style="color: #333333; font-size: 8pt; margin: 0;">JSON/Graph</p></div>
+    </div>
+    <div class="row">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Full-Text Search</p></div>
+      <div class="cell"><p style="color: #2e7d32; font-weight: bold; font-size: 8pt; margin: 0;">FTS5 + BM25</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">Basic text</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">Basic</p></div>
+      <div class="cell"><p style="color: #f0a500; font-size: 8pt; margin: 0;">Partial</p></div>
+    </div>
+    <div class="row row-even">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Semantic Search</p></div>
+      <div class="cell"><p style="color: #2e7d32; font-weight: bold; font-size: 8pt; margin: 0;">Optional</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+    </div>
+    <div class="row">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Session Tracking</p></div>
+      <div class="cell"><p style="color: #2e7d32; font-weight: bold; font-size: 8pt; margin: 0;">Yes</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+    </div>
+    <div class="row row-even">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Activity Logging</p></div>
+      <div class="cell"><p style="color: #2e7d32; font-weight: bold; font-size: 8pt; margin: 0;">Yes</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+    </div>
+    <div class="row">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Auto-Categorize</p></div>
+      <div class="cell"><p style="color: #2e7d32; font-weight: bold; font-size: 8pt; margin: 0;">Yes</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #f0a500; font-size: 8pt; margin: 0;">Manual</p></div>
+    </div>
+    <div class="row row-even">
+      <div class="cell cell-label"><p style="color: #1a1a2e; font-weight: bold; font-size: 8pt; margin: 0;">Global Search</p></div>
+      <div class="cell"><p style="color: #2e7d32; font-weight: bold; font-size: 8pt; margin: 0;">Cross-project</p></div>
+      <div class="cell"><p style="color: #f0a500; font-size: 8pt; margin: 0;">Per-project</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+      <div class="cell"><p style="color: #c62828; font-size: 8pt; margin: 0;">No</p></div>
+    </div>
+  </div>
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #2e7d32;"></div>
+      <p style="color: #666666; font-size: 8pt; margin: 0;">Full support</p>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #f0a500;"></div>
+      <p style="color: #666666; font-size: 8pt; margin: 0;">Partial/Limited</p>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: #c62828;"></div>
+      <p style="color: #666666; font-size: 8pt; margin: 0;">Not available</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

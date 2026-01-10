@@ -3,11 +3,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useTheme } from '@/composables/useTheme'
 import { useElapsedTime } from '@/composables/useElapsedTime'
-import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw, Download, HelpCircle } from 'lucide-vue-next'
+import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw, Download, HelpCircle, Settings } from 'lucide-vue-next'
 import ProjectSwitcher from './ProjectSwitcher.vue'
 import ExportPanel from './ExportPanel.vue'
 import HelpModal from './HelpModal.vue'
 import ProjectManagementModal from './ProjectManagementModal.vue'
+import SettingsModal from './SettingsModal.vue'
 
 const emit = defineEmits<{
   (e: 'toggle-filters'): void
@@ -21,6 +22,7 @@ const showProjectSwitcher = ref(false)
 const showExportPanel = ref(false)
 const showHelp = ref(false)
 const showProjectManagement = ref(false)
+const showSettings = ref(false)
 const isRefreshing = ref(false)
 
 // Live elapsed time since last update
@@ -158,6 +160,15 @@ onUnmounted(() => {
             <Filter class="w-5 h-5" />
           </button>
 
+          <!-- Settings Button -->
+          <button
+            @click="showSettings = true"
+            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Settings & API Keys"
+          >
+            <Settings class="w-5 h-5" />
+          </button>
+
           <!-- Theme Toggle -->
           <button
             @click="toggleTheme"
@@ -211,5 +222,8 @@ onUnmounted(() => {
 
     <!-- Project Management Modal -->
     <ProjectManagementModal v-if="showProjectManagement" @close="showProjectManagement = false" />
+
+    <!-- Settings Modal -->
+    <SettingsModal v-if="showSettings" @close="showSettings = false" />
   </header>
 </template>

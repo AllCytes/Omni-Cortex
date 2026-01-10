@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #ffffff; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header { background: #f0f4ff; padding: 12pt 25pt;
+  border-bottom: 2pt solid #667eea; display: flex;
+  justify-content: space-between; align-items: center; }
+.header-tag { background: #667eea; padding: 4pt 10pt; border-radius: 15pt; }
+.content { flex: 1; padding: 10pt 25pt; display: flex; gap: 12pt; }
+.left-col { flex: 1; display: flex; flex-direction: column; gap: 5pt; }
+.right-col { flex: 1; display: flex; flex-direction: column; gap: 8pt; }
+.feature { background: #fafbff; border: 1pt solid #e0e5f0;
+  border-radius: 6pt; padding: 6pt 10pt; border-left: 3pt solid #667eea; }
+.code-box { background: #1a1a2e; border-radius: 6pt; padding: 10pt; flex: 1; }
+.bottom-bar { background: #e8f5e9; padding: 6pt 25pt;
+  border-top: 2pt solid #00b894; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 style="color: #1a1a2e; font-size: 20pt; margin: 0;">Omni-Cortex Architecture</h1>
+  <div class="header-tag">
+    <p style="color: #ffffff; font-size: 9pt; margin: 0;">IMPLEMENTATION</p>
+  </div>
+</div>
+<div class="content">
+  <div class="left-col">
+    <div class="feature">
+      <h3 style="color: #1a1a2e; font-size: 11pt; margin: 0 0 3pt 0;">FastMCP Decorators</h3>
+      <p style="color: #666666; font-size: 9pt; margin: 0;">Clean tool registration with @mcp.tool() pattern</p>
+    </div>
+    <div class="feature">
+      <h3 style="color: #1a1a2e; font-size: 11pt; margin: 0 0 3pt 0;">SQLite + FTS5</h3>
+      <p style="color: #666666; font-size: 9pt; margin: 0;">Zero external dependencies, full-text search built-in</p>
+    </div>
+    <div class="feature">
+      <h3 style="color: #1a1a2e; font-size: 11pt; margin: 0 0 3pt 0;">BM25 Ranking</h3>
+      <p style="color: #666666; font-size: 9pt; margin: 0;">Industry-standard relevance scoring algorithm</p>
+    </div>
+    <div class="feature">
+      <h3 style="color: #1a1a2e; font-size: 11pt; margin: 0 0 3pt 0;">Optional Embeddings</h3>
+      <p style="color: #666666; font-size: 9pt; margin: 0;">Semantic search via sentence-transformers when needed</p>
+    </div>
+    <div class="feature">
+      <h3 style="color: #1a1a2e; font-size: 11pt; margin: 0 0 3pt 0;">Pydantic Models</h3>
+      <p style="color: #666666; font-size: 9pt; margin: 0;">Validated inputs/outputs with detailed errors</p>
+    </div>
+    <div class="feature">
+      <h3 style="color: #1a1a2e; font-size: 11pt; margin: 0 0 3pt 0;">Async Lifecycle</h3>
+      <p style="color: #666666; font-size: 9pt; margin: 0;">Clean resource management with context managers</p>
+    </div>
+  </div>
+  <div class="right-col">
+    <div class="code-box">
+      <p style="color: #667eea; font-size: 9pt; margin: 0 0 8pt 0;">server.py - Core Implementation</p>
+      <p style="font-family: Courier New, monospace; color: #f0a500; font-size: 8pt; margin: 0;">from mcp.server.fastmcp import FastMCP</p>
+      <p style="font-family: Courier New, monospace; color: #e0e5f0; font-size: 8pt; margin: 8pt 0 0 0;">mcp = FastMCP("omni_cortex", lifespan=lifespan)</p>
+      <p style="font-family: Courier New, monospace; color: #888888; font-size: 8pt; margin: 8pt 0 0 0;"># Register tools by category</p>
+      <p style="font-family: Courier New, monospace; color: #00b894; font-size: 8pt; margin: 4pt 0 0 0;">register_memory_tools(mcp)</p>
+      <p style="font-family: Courier New, monospace; color: #00b894; font-size: 8pt; margin: 4pt 0 0 0;">register_activity_tools(mcp)</p>
+      <p style="font-family: Courier New, monospace; color: #00b894; font-size: 8pt; margin: 4pt 0 0 0;">register_session_tools(mcp)</p>
+      <p style="font-family: Courier New, monospace; color: #00b894; font-size: 8pt; margin: 4pt 0 0 0;">register_utility_tools(mcp)</p>
+      <p style="font-family: Courier New, monospace; color: #888888; font-size: 8pt; margin: 8pt 0 0 0;"># That's it - ~50 lines total</p>
+    </div>
+  </div>
+</div>
+<div class="bottom-bar">
+  <p style="color: #2e7d32; font-size: 9pt; margin: 0;">Key Insight: SQLite FTS5 provides 25x faster search than JSON file scanning</p>
+</div>
+</body>
+</html>

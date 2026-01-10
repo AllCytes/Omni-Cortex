@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #ffffff; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header { background: #f0f4ff; padding: 12pt 25pt;
+  border-bottom: 2pt solid #667eea; }
+.content { flex: 1; padding: 15pt 25pt; display: flex; flex-direction: column; gap: 12pt; }
+.row { display: flex; gap: 12pt; }
+.card { flex: 1; background: #fafbff; border: 1pt solid #e0e5f0;
+  border-radius: 6pt; padding: 12pt; }
+.card-header { display: flex; align-items: center; gap: 10pt; margin-bottom: 8pt; }
+.num { background: #667eea; width: 24pt; height: 24pt;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.highlight-card { background: #667eea; border: none; }
+.bottom-quote { background: #f8f9ff; border-top: 2pt solid #667eea;
+  padding: 10pt 25pt; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 style="color: #1a1a2e; font-size: 20pt; margin: 0;">Why Python? (15+ Years of Engineering Experience)</h1>
+</div>
+<div class="content">
+  <div class="row">
+    <div class="card">
+      <div class="card-header">
+        <div class="num">
+          <p style="color: #ffffff; font-size: 12pt; font-weight: bold; margin: 0;">1</p>
+        </div>
+        <h3 style="color: #1a1a2e; font-size: 12pt; margin: 0;">Rapid Prototyping</h3>
+      </div>
+      <p style="color: #666666; font-size: 10pt; margin: 0; line-height: 1.4;">Python excels at quick iteration - critical for evolving MCP patterns</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="num">
+          <p style="color: #ffffff; font-size: 12pt; font-weight: bold; margin: 0;">2</p>
+        </div>
+        <h3 style="color: #1a1a2e; font-size: 12pt; margin: 0;">Data Science Ecosystem</h3>
+      </div>
+      <p style="color: #666666; font-size: 10pt; margin: 0; line-height: 1.4;">NumPy, sentence-transformers for embeddings, ML integration ready</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="num">
+          <p style="color: #ffffff; font-size: 12pt; font-weight: bold; margin: 0;">3</p>
+        </div>
+        <h3 style="color: #1a1a2e; font-size: 12pt; margin: 0;">Type Hints + Pydantic</h3>
+      </div>
+      <p style="color: #666666; font-size: 10pt; margin: 0; line-height: 1.4;">Strong runtime validation with excellent error messages</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="card">
+      <div class="card-header">
+        <div class="num">
+          <p style="color: #ffffff; font-size: 12pt; font-weight: bold; margin: 0;">4</p>
+        </div>
+        <h3 style="color: #1a1a2e; font-size: 12pt; margin: 0;">Native Async/Await</h3>
+      </div>
+      <p style="color: #666666; font-size: 10pt; margin: 0; line-height: 1.4;">First-class async support perfect for IO-bound MCP operations</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="num">
+          <p style="color: #ffffff; font-size: 12pt; font-weight: bold; margin: 0;">5</p>
+        </div>
+        <h3 style="color: #1a1a2e; font-size: 12pt; margin: 0;">Developer Velocity</h3>
+      </div>
+      <p style="color: #666666; font-size: 10pt; margin: 0; line-height: 1.4;">Less boilerplate = more focus on solving actual problems</p>
+    </div>
+    <div class="card highlight-card">
+      <div class="card-header">
+        <div class="num" style="background: #ffffff;">
+          <p style="color: #667eea; font-size: 12pt; font-weight: bold; margin: 0;">6</p>
+        </div>
+        <h3 style="color: #ffffff; font-size: 12pt; margin: 0;">FastMCP Framework</h3>
+      </div>
+      <p style="color: #e0e5ff; font-size: 10pt; margin: 0; line-height: 1.4;">Decorator-based API: ~50 LOC vs 150+ in TypeScript</p>
+    </div>
+  </div>
+</div>
+<div class="bottom-quote">
+  <p style="color: #555555; font-size: 10pt; margin: 0; font-style: italic;">"Keep it simple." - The irony: FastMCP decorators ARE the simple solution</p>
+</div>
+</body>
+</html>

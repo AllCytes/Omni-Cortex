@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #ffffff; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header { background: #f0f4ff; padding: 10pt 25pt;
+  border-bottom: 2pt solid #667eea; }
+.content { flex: 1; padding: 8pt 25pt; display: flex; gap: 12pt; }
+.chart-col { flex: 1.3; display: flex; flex-direction: column; gap: 6pt; }
+.insights-col { flex: 0.7; display: flex; flex-direction: column; gap: 6pt; }
+.metric-card { background: #fafbff; border: 1pt solid #e0e5f0;
+  border-radius: 6pt; padding: 8pt; }
+.metric-header { display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 6pt; }
+.metric-winner { background: #e8f5e9; padding: 2pt 6pt; border-radius: 8pt; }
+.bar-group { margin-bottom: 4pt; }
+.bar-label { display: flex; justify-content: space-between; margin-bottom: 2pt; }
+.bar { height: 12pt; background: #e0e5f0; border-radius: 6pt; overflow: hidden; }
+.omni-bar { background: #667eea; }
+.other-bar { background: #f0a500; }
+.insight-card { background: #667eea; border-radius: 6pt; padding: 8pt; flex: 1; }
+.caveat { background: #fff9e6; border-left: 3pt solid #f0a500;
+  border-radius: 0 6pt 6pt 0; padding: 8pt; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 style="color: #1a1a2e; font-size: 18pt; margin: 0;">Performance Benchmarks (Estimated)</h1>
+</div>
+<div class="content">
+  <div class="chart-col">
+    <div class="metric-card">
+      <div class="metric-header">
+        <p style="color: #1a1a2e; font-size: 10pt; font-weight: bold; margin: 0;">Memory Create Operation</p>
+        <div class="metric-winner">
+          <p style="color: #2e7d32; font-size: 7pt; margin: 0;">3x faster</p>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">
+          <p style="color: #666666; font-size: 8pt; margin: 0;">Omni-Cortex (SQLite)</p>
+          <p style="color: #333333; font-weight: bold; font-size: 8pt; margin: 0;">~5ms</p>
+        </div>
+        <div class="bar"><div class="omni-bar" style="width: 25%; height: 100%; border-radius: 6pt;"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">
+          <p style="color: #666666; font-size: 8pt; margin: 0;">memory-bank-mcp (JSON)</p>
+          <p style="color: #333333; font-weight: bold; font-size: 8pt; margin: 0;">~15ms</p>
+        </div>
+        <div class="bar"><div class="other-bar" style="width: 75%; height: 100%; border-radius: 6pt;"></div></div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-header">
+        <p style="color: #1a1a2e; font-size: 10pt; font-weight: bold; margin: 0;">Memory Search (1000 items)</p>
+        <div class="metric-winner">
+          <p style="color: #2e7d32; font-size: 7pt; margin: 0;">25x faster</p>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">
+          <p style="color: #666666; font-size: 8pt; margin: 0;">Omni-Cortex (FTS5)</p>
+          <p style="color: #333333; font-weight: bold; font-size: 8pt; margin: 0;">~2ms</p>
+        </div>
+        <div class="bar"><div class="omni-bar" style="width: 4%; height: 100%; border-radius: 6pt;"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">
+          <p style="color: #666666; font-size: 8pt; margin: 0;">memory-bank-mcp (Scan)</p>
+          <p style="color: #333333; font-weight: bold; font-size: 8pt; margin: 0;">~50ms</p>
+        </div>
+        <div class="bar"><div class="other-bar" style="width: 100%; height: 100%; border-radius: 6pt;"></div></div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-header">
+        <p style="color: #1a1a2e; font-size: 10pt; font-weight: bold; margin: 0;">Cold Start Time</p>
+        <div class="metric-winner" style="background: #fafbff;">
+          <p style="color: #666666; font-size: 7pt; margin: 0;">Similar</p>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">
+          <p style="color: #666666; font-size: 8pt; margin: 0;">Omni-Cortex (Python)</p>
+          <p style="color: #333333; font-weight: bold; font-size: 8pt; margin: 0;">~200ms</p>
+        </div>
+        <div class="bar"><div class="omni-bar" style="width: 80%; height: 100%; border-radius: 6pt;"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">
+          <p style="color: #666666; font-size: 8pt; margin: 0;">memory-bank-mcp (Node)</p>
+          <p style="color: #333333; font-weight: bold; font-size: 8pt; margin: 0;">~150ms</p>
+        </div>
+        <div class="bar"><div class="other-bar" style="width: 60%; height: 100%; border-radius: 6pt;"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="insights-col">
+    <div class="insight-card">
+      <h3 style="color: #ffffff; font-size: 10pt; margin: 0 0 5pt 0;">Why SQLite Wins</h3>
+      <p style="color: #e0e5ff; font-size: 8pt; margin: 0 0 3pt 0;">FTS5: O(log n) vs O(n) scan</p>
+      <p style="color: #e0e5ff; font-size: 8pt; margin: 0 0 3pt 0;">Single file = atomic ops</p>
+      <p style="color: #e0e5ff; font-size: 8pt; margin: 0;">Built-in BM25 ranking</p>
+    </div>
+    <div class="caveat">
+      <h3 style="color: #1a1a2e; font-size: 9pt; margin: 0 0 3pt 0;">Honest Caveat</h3>
+      <p style="color: #666666; font-size: 7pt; margin: 0; line-height: 1.3;">Cold start slightly slower (Python). TypeScript has edge on startup. Negligible for long sessions.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

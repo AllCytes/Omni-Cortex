@@ -191,11 +191,16 @@ async function handleRefine() {
     const idx = generatedImages.value.findIndex(img => img.image_id === editingImage.value?.image_id)
     if (idx >= 0 && result.success) {
       generatedImages.value[idx] = result
+      closeEditModal()
+    } else if (!result.success) {
+      // Show error in the generation errors section
+      generationErrors.value = [result.error || 'Failed to refine image']
+      closeEditModal()
     }
-
-    closeEditModal()
   } catch (e) {
     console.error('Refine failed:', e)
+    generationErrors.value = [e instanceof Error ? e.message : 'Failed to refine image']
+    closeEditModal()
   } finally {
     isRefining.value = false
   }
@@ -252,17 +257,17 @@ async function startNewSession() {
   imageCount.value = 1
 }
 
-// Type colors for memory badges
+// Type colors for memory badges (with dark mode support)
 const TYPE_COLORS: Record<string, string> = {
-  decision: 'bg-amber-100 text-amber-800',
-  solution: 'bg-emerald-100 text-emerald-800',
-  error: 'bg-red-100 text-red-800',
-  fact: 'bg-blue-100 text-blue-800',
-  preference: 'bg-purple-100 text-purple-800',
-  progress: 'bg-cyan-100 text-cyan-800',
-  conversation: 'bg-indigo-100 text-indigo-800',
-  troubleshooting: 'bg-orange-100 text-orange-800',
-  other: 'bg-gray-100 text-gray-800',
+  decision: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
+  solution: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200',
+  error: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200',
+  fact: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
+  preference: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200',
+  progress: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-200',
+  conversation: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200',
+  troubleshooting: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200',
+  other: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
 }
 
 // Aspect ratio options
@@ -291,14 +296,14 @@ onMounted(async () => {
     <!-- Memory Selection Side Panel -->
     <div
       v-if="showMemoryPanel"
-      class="w-72 border-r border-gray-200 bg-gray-50 flex flex-col overflow-hidden"
+      class="w-72 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col overflow-hidden"
     >
-      <div class="p-3 border-b border-gray-200">
+      <div class="p-3 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="font-medium text-sm text-gray-700">Memory Context</h3>
+          <h3 class="font-medium text-sm text-gray-700 dark:text-gray-200">Memory Context</h3>
           <button
             @click="showMemoryPanel = false"
-            class="p-1 hover:bg-gray-200 rounded"
+            class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400"
             title="Hide panel"
           >
             <ChevronDown class="w-4 h-4" />
@@ -308,14 +313,14 @@ onMounted(async () => {
         <div class="flex gap-2 mb-2">
           <button
             @click="selectAllMemories"
-            class="flex-1 text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            class="flex-1 text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-900/50"
           >
             <CheckSquare class="w-3 h-3 inline mr-1" />
             All
           </button>
           <button
             @click="selectNoneMemories"
-            class="flex-1 text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            class="flex-1 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
           >
             <Square class="w-3 h-3 inline mr-1" />
             None
@@ -323,12 +328,12 @@ onMounted(async () => {
         </div>
 
         <div class="relative">
-          <Search class="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search class="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
             v-model="memorySearchQuery"
             type="text"
             placeholder="Search memories..."
-            class="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-200 rounded"
+            class="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
       </div>
@@ -339,13 +344,13 @@ onMounted(async () => {
           :key="memory.id"
           @click="toggleMemory(memory.id)"
           class="p-2 rounded cursor-pointer transition-colors"
-          :class="isMemorySelected(memory.id) ? 'bg-blue-100 border border-blue-300' : 'bg-white border border-gray-200 hover:bg-gray-50'"
+          :class="isMemorySelected(memory.id) ? 'bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'"
         >
           <div class="flex items-start gap-2">
             <component
               :is="isMemorySelected(memory.id) ? CheckSquare : Square"
               class="w-4 h-4 mt-0.5 flex-shrink-0"
-              :class="isMemorySelected(memory.id) ? 'text-blue-600' : 'text-gray-400'"
+              :class="isMemorySelected(memory.id) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'"
             />
             <div class="flex-1 min-w-0">
               <span
@@ -354,7 +359,7 @@ onMounted(async () => {
               >
                 {{ memory.memory_type }}
               </span>
-              <p class="text-xs text-gray-600 mt-1 line-clamp-2">
+              <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
                 {{ memory.content.substring(0, 100) }}{{ memory.content.length > 100 ? '...' : '' }}
               </p>
             </div>
@@ -362,8 +367,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="p-2 border-t border-gray-200 bg-white">
-        <span class="text-xs text-gray-500">
+      <div class="p-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <span class="text-xs text-gray-500 dark:text-gray-400">
           {{ selectedMemoryIds.length }} selected
         </span>
       </div>
@@ -372,22 +377,22 @@ onMounted(async () => {
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
-      <div class="p-4 border-b border-gray-200 bg-white">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2">
             <button
               v-if="!showMemoryPanel"
               @click="showMemoryPanel = true"
-              class="p-2 hover:bg-gray-100 rounded"
+              class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400"
               title="Show memory panel"
             >
               <ChevronUp class="w-4 h-4" />
             </button>
-            <Image class="w-5 h-5 text-purple-600" />
-            <h2 class="font-semibold text-gray-800">Image Generation</h2>
+            <Image class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <h2 class="font-semibold text-gray-800 dark:text-gray-100">Image Generation</h2>
             <span
               class="text-xs px-2 py-0.5 rounded-full"
-              :class="isAvailable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+              :class="isAvailable ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'"
             >
               {{ isAvailable ? 'Ready' : 'Unavailable' }}
             </span>
@@ -396,7 +401,7 @@ onMounted(async () => {
           <div class="flex items-center gap-2">
             <button
               @click="startNewSession"
-              class="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+              class="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
             >
               <RefreshCw class="w-4 h-4" />
               New Session
@@ -405,12 +410,12 @@ onMounted(async () => {
         </div>
 
         <!-- Not available message -->
-        <div v-if="!isAvailable" class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <div v-if="!isAvailable" class="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg">
           <div class="flex items-start gap-2">
-            <AlertCircle class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p class="text-sm text-amber-800">{{ statusMessage }}</p>
-              <p class="text-xs text-amber-600 mt-1">
+              <p class="text-sm text-amber-800 dark:text-amber-200 font-medium">{{ statusMessage }}</p>
+              <p class="text-xs text-amber-600 dark:text-amber-300 mt-1">
                 Set GEMINI_API_KEY environment variable and install google-genai package.
               </p>
             </div>
@@ -419,7 +424,7 @@ onMounted(async () => {
 
         <!-- Image Count Selector -->
         <div v-if="isAvailable" class="mb-4">
-          <label class="text-sm font-medium text-gray-700 mb-2 block">Number of Images</label>
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 block">Number of Images</label>
           <div class="flex gap-2">
             <button
               v-for="count in [1, 2, 4] as const"
@@ -428,7 +433,7 @@ onMounted(async () => {
               class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               :class="imageCount === count
                 ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
             >
               {{ count }}
             </button>
@@ -440,19 +445,19 @@ onMounted(async () => {
           <div
             v-for="(request, index) in imageRequests"
             :key="index"
-            class="p-3 border border-gray-200 rounded-lg bg-gray-50"
+            class="p-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700"
           >
             <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-700">Image {{ index + 1 }}</span>
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Image {{ index + 1 }}</span>
             </div>
 
             <!-- Preset Selector -->
             <div class="mb-2">
-              <label class="text-xs text-gray-500 block mb-1">Preset</label>
+              <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Preset</label>
               <select
                 v-model="request.preset"
                 @change="onPresetChange(index, request.preset)"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 rounded"
+                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option v-for="preset in presets" :key="preset.value" :value="preset.value">
                   {{ preset.label }}
@@ -462,22 +467,22 @@ onMounted(async () => {
 
             <!-- Custom Prompt -->
             <div class="mb-2">
-              <label class="text-xs text-gray-500 block mb-1">Custom Prompt</label>
+              <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Custom Prompt</label>
               <textarea
                 v-model="request.custom_prompt"
                 placeholder="Describe what you want..."
                 rows="2"
-                class="w-full px-2 py-1.5 text-sm border border-gray-200 rounded resize-none"
+                class="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
             </div>
 
             <!-- Aspect Ratio & Size -->
             <div class="flex gap-2">
               <div class="flex-1">
-                <label class="text-xs text-gray-500 block mb-1">Aspect</label>
+                <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Aspect</label>
                 <select
                   v-model="request.aspect_ratio"
-                  class="w-full px-2 py-1 text-xs border border-gray-200 rounded"
+                  class="w-full px-2 py-1 text-xs border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   <option v-for="ratio in aspectRatioOptions" :key="ratio" :value="ratio">
                     {{ ratio }}
@@ -485,10 +490,10 @@ onMounted(async () => {
                 </select>
               </div>
               <div class="flex-1">
-                <label class="text-xs text-gray-500 block mb-1">Size</label>
+                <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Size</label>
                 <select
                   v-model="request.image_size"
-                  class="w-full px-2 py-1 text-xs border border-gray-200 rounded"
+                  class="w-full px-2 py-1 text-xs border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   <option v-for="size in imageSizeOptions" :key="size" :value="size">
                     {{ size }}
@@ -505,9 +510,9 @@ onMounted(async () => {
             type="checkbox"
             id="searchGrounding"
             v-model="useSearchGrounding"
-            class="rounded"
+            class="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
           />
-          <label for="searchGrounding" class="text-sm text-gray-600">
+          <label for="searchGrounding" class="text-sm text-gray-600 dark:text-gray-300">
             Use Google Search grounding (for current events, real-time data)
           </label>
         </div>
@@ -517,7 +522,7 @@ onMounted(async () => {
           <button
             @click="handleGenerate"
             :disabled="isGenerating || !store.currentDbPath"
-            class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
           >
             <Loader2 v-if="isGenerating" class="w-5 h-5 animate-spin" />
             <Sparkles v-else class="w-5 h-5" />
@@ -527,22 +532,22 @@ onMounted(async () => {
       </div>
 
       <!-- Generation Errors -->
-      <div v-if="generationErrors.length > 0" class="p-4 bg-red-50 border-b border-red-200">
-        <div v-for="(error, idx) in generationErrors" :key="idx" class="flex items-center gap-2 text-sm text-red-700">
+      <div v-if="generationErrors.length > 0" class="p-4 bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800">
+        <div v-for="(error, idx) in generationErrors" :key="idx" class="flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
           <AlertCircle class="w-4 h-4" />
           {{ error }}
         </div>
       </div>
 
       <!-- Generated Images Gallery -->
-      <div class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900">
         <div v-if="generatedImages.length > 0">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-medium text-gray-800">Generated Images ({{ generatedImages.length }})</h3>
+            <h3 class="font-medium text-gray-800 dark:text-gray-100">Generated Images ({{ generatedImages.length }})</h3>
             <button
               v-if="generatedImages.filter(i => i.success).length > 1"
               @click="downloadAllAsZip"
-              class="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+              class="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
             >
               <Archive class="w-4 h-4" />
               Download All
@@ -556,7 +561,7 @@ onMounted(async () => {
             <div
               v-for="image in generatedImages"
               :key="image.image_id || image.index"
-              class="border border-gray-200 rounded-lg overflow-hidden bg-white"
+              class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800"
             >
               <div v-if="image.success && image.image_data" class="relative group">
                 <img
@@ -592,13 +597,13 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <div v-else class="p-4 flex items-center gap-2 text-red-600">
+              <div v-else class="p-4 flex items-center gap-2 text-red-600 dark:text-red-400">
                 <AlertCircle class="w-5 h-5" />
                 <span class="text-sm">{{ image.error || 'Failed to generate' }}</span>
               </div>
 
               <!-- Text response if any -->
-              <div v-if="image.text_response" class="p-2 border-t border-gray-100 text-xs text-gray-600">
+              <div v-if="image.text_response" class="p-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
                 {{ image.text_response }}
               </div>
             </div>
@@ -607,8 +612,8 @@ onMounted(async () => {
 
         <!-- Empty state -->
         <div v-else class="h-full flex items-center justify-center">
-          <div class="text-center text-gray-500">
-            <Image class="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <div class="text-center text-gray-500 dark:text-gray-400">
+            <Image class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
             <p class="text-sm">No images generated yet</p>
             <p class="text-xs mt-1">Select memories and configure your prompts above</p>
           </div>
@@ -623,10 +628,10 @@ onMounted(async () => {
         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
         @click.self="closeEditModal"
       >
-        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 overflow-hidden">
-          <div class="flex items-center justify-between p-4 border-b">
-            <h3 class="font-medium">Refine Image</h3>
-            <button @click="closeEditModal" class="p-1 hover:bg-gray-100 rounded">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 overflow-hidden">
+          <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="font-medium text-gray-800 dark:text-gray-100">Refine Image</h3>
+            <button @click="closeEditModal" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
               <X class="w-5 h-5" />
             </button>
           </div>
@@ -639,28 +644,28 @@ onMounted(async () => {
               class="w-full max-h-64 object-contain rounded-lg mb-4"
             />
 
-            <label class="block text-sm font-medium text-gray-700 mb-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
               Refinement Prompt
             </label>
             <textarea
               v-model="editPrompt"
               placeholder="Describe changes you want (e.g., 'Make the title larger', 'Change colors to blue theme')"
               rows="3"
-              class="w-full px-3 py-2 border border-gray-200 rounded-lg resize-none"
+              class="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             />
           </div>
 
-          <div class="flex justify-end gap-2 p-4 border-t bg-gray-50">
+          <div class="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <button
               @click="closeEditModal"
-              class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded"
+              class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
             >
               Cancel
             </button>
             <button
               @click="handleRefine"
               :disabled="isRefining || !editPrompt.trim()"
-              class="flex items-center gap-2 px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-300"
+              class="flex items-center gap-2 px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600"
             >
               <Loader2 v-if="isRefining" class="w-4 h-4 animate-spin" />
               Apply Edit

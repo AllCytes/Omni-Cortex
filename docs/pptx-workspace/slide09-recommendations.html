@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+html { background: #ffffff; }
+body {
+  width: 720pt; height: 405pt; margin: 0; padding: 0;
+  background: #ffffff; font-family: Arial, sans-serif;
+  display: flex; flex-direction: column;
+}
+.header { background: #f0f4ff; padding: 12pt 25pt;
+  border-bottom: 2pt solid #667eea; }
+.content { flex: 1; padding: 15pt 25pt; display: flex; gap: 15pt; }
+.rec-card { flex: 1; background: #fafbff; border: 1pt solid #e0e5f0;
+  border-radius: 8pt; padding: 15pt; display: flex; flex-direction: column; }
+.rec-header { display: flex; align-items: center; gap: 10pt;
+  margin-bottom: 12pt; padding-bottom: 10pt; border-bottom: 2pt solid; }
+.python-header { border-color: #667eea; }
+.ts-header { border-color: #f0a500; }
+.go-header { border-color: #00b894; }
+.verdict { margin-top: auto; padding-top: 10pt; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 style="color: #1a1a2e; font-size: 20pt; margin: 0;">When to Use Each Approach</h1>
+</div>
+<div class="content">
+  <div class="rec-card">
+    <div class="rec-header python-header">
+      <p style="color: #667eea; font-size: 14pt; font-weight: bold; margin: 0;">Python + FastMCP</p>
+    </div>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Rapid development priority</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ ML/embedding integration</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Data science workflows</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Solo dev or small team</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Complex search needs</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Prototype to production</p>
+    <div class="verdict">
+      <p style="color: #667eea; font-size: 9pt; font-style: italic; margin: 0;">"Ship fast, iterate faster"</p>
+    </div>
+  </div>
+  <div class="rec-card">
+    <div class="rec-header ts-header">
+      <p style="color: #f0a500; font-size: 14pt; font-weight: bold; margin: 0;">TypeScript SDK</p>
+    </div>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Full-stack JS/TS team</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Compile-time safety critical</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Large team coordination</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Frontend integration</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ WebSocket-heavy apps</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Existing Node ecosystem</p>
+    <div class="verdict">
+      <p style="color: #f0a500; font-size: 9pt; font-style: italic; margin: 0;">"Type safety at scale"</p>
+    </div>
+  </div>
+  <div class="rec-card">
+    <div class="rec-header go-header">
+      <p style="color: #00b894; font-size: 14pt; font-weight: bold; margin: 0;">Go SDK</p>
+    </div>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Maximum performance</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Resource-constrained env</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ High concurrency</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Container/serverless</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Single binary deploy</p>
+    <p style="color: #333333; font-size: 10pt; margin: 0 0 6pt 0;">+ Low memory footprint</p>
+    <div class="verdict">
+      <p style="color: #00b894; font-size: 9pt; font-style: italic; margin: 0;">"Performance is non-negotiable"</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
