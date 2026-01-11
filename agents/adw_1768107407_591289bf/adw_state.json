@@ -1,0 +1,21 @@
+{
+  "adw_id": "adw_1768107407_591289bf",
+  "task_description": "Add a health check endpoint to the dashboard API",
+  "created_at": "2026-01-10T21:56:47.517242",
+  "current_phase": null,
+  "completed_phases": [],
+  "phase_results": [
+    {
+      "phase": "plan",
+      "success": false,
+      "started_at": "2026-01-10T21:56:47.517949",
+      "completed_at": "2026-01-10T21:56:52.126417",
+      "output_file": null,
+      "error_message": "",
+      "artifacts": []
+    }
+  ],
+  "spec_file": null,
+  "project_path": "D:\\Projects\\omni-cortex",
+  "status": "failed"
+}

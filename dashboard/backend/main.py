@@ -230,6 +230,20 @@ if RATE_LIMITING_AVAILABLE:
 else:
     limiter = None
 
+
+def rate_limit(limit_string: str):
+    """Decorator for conditional rate limiting.
+
+    Returns the actual limiter decorator if available, otherwise a no-op.
+    Usage: @rate_limit("10/minute")
+    """
+    if limiter is not None:
+        return limiter.limit(limit_string)
+    # No-op decorator when rate limiting is not available
+    def noop_decorator(func):
+        return func
+    return noop_decorator
+
 # CORS configuration (environment-aware)
 cors_config = get_cors_config()
 app.add_middleware(
@@ -333,6 +347,7 @@ async def refresh_projects():
 
 
 @app.get("/api/memories")
+@rate_limit("100/minute")
 async def list_memories(
     project: str = Query(..., description="Path to the database file"),
     memory_type: Optional[str] = Query(None, alias="type"),
@@ -744,6 +759,7 @@ async def chat_status():
 
 
 @app.post("/api/chat", response_model=ChatResponse)
+@rate_limit("10/minute")
 async def chat_with_memories(
     request: ChatRequest,
     project: str = Query(..., description="Path to the database file"),
@@ -770,6 +786,7 @@ async def chat_with_memories(
 
 
 @app.get("/api/chat/stream")
+@rate_limit("10/minute")
 async def stream_chat(
     project: str = Query(..., description="Path to the database file"),
     question: str = Query(..., description="The question to ask"),
@@ -846,6 +863,7 @@ async def get_image_presets():
 
 
 @app.post("/api/image/generate-batch", response_model=BatchImageGenerationResponse)
+@rate_limit("5/minute")
 async def generate_images_batch(
     request: BatchImageGenerationRequest,
     db_path: str = Query(..., alias="project", description="Path to the database file"),
@@ -903,6 +921,7 @@ async def generate_images_batch(
 
 
 @app.post("/api/image/refine", response_model=SingleImageResponseModel)
+@rate_limit("5/minute")
 async def refine_image(request: ImageRefineRequest):
     """Refine an existing generated image with a new prompt."""
     result = await image_service.refine_image(

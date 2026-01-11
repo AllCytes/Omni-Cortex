@@ -1,0 +1,21 @@
+{
+  "adw_id": "adw_1768105170_4c9ada14",
+  "task_description": "Add a health check endpoint to the dashboard API",
+  "created_at": "2026-01-10T21:19:30.598993",
+  "current_phase": null,
+  "completed_phases": [],
+  "phase_results": [
+    {
+      "phase": "plan",
+      "success": false,
+      "started_at": "2026-01-10T21:19:30.600079",
+      "completed_at": "2026-01-10T21:19:30.622762",
+      "output_file": null,
+      "error_message": "Error running Claude Code: [WinError 2] The system cannot find the file specified",
+      "artifacts": []
+    }
+  ],
+  "spec_file": null,
+  "project_path": "D:\\Projects\\omni-cortex",
+  "status": "failed"
+}
