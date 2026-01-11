@@ -1049,8 +1049,8 @@ def create_memory(
     # Insert memory
     conn.execute(
         """
-        INSERT INTO memories (id, content, context, type, status, importance_score, access_count, created_at, last_accessed, tags)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO memories (id, content, context, type, status, importance_score, access_count, created_at, last_accessed, updated_at, tags)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             memory_id,
@@ -1060,6 +1060,7 @@ def create_memory(
             "fresh",
             importance_score,
             0,
+            now,
             now,
             now,
             json.dumps(tags) if tags else None,

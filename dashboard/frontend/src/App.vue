@@ -15,6 +15,8 @@ import SessionContextViewer from '@/components/SessionContextViewer.vue'
 import FreshnessReviewPanel from '@/components/FreshnessReviewPanel.vue'
 import RelationshipGraph from '@/components/RelationshipGraph.vue'
 import OnboardingOverlay from '@/components/OnboardingOverlay.vue'
+import QuickCaptureModal from '@/components/QuickCaptureModal.vue'
+import { Plus, Check } from 'lucide-vue-next'
 
 const store = useDashboardStore()
 const onboardingStore = useOnboardingStore()
@@ -23,6 +25,8 @@ useKeyboardShortcuts()
 
 const showFilters = ref(true)
 const activeTab = ref<'memories' | 'activity' | 'stats' | 'review' | 'graph' | 'chat'>('memories')
+const showQuickCapture = ref(false)
+const toast = ref({ show: false, message: '' })
 
 onMounted(async () => {
   await store.loadProjects()
@@ -35,6 +39,11 @@ onMounted(async () => {
       onboardingStore.startOnboarding()
     }, 500)
   }
+
+  // Listen for quick capture keyboard shortcut
+  window.addEventListener('show-quick-capture', () => {
+    showQuickCapture.value = true
+  })
 })
 
 function toggleFilters() {
@@ -44,6 +53,18 @@ function toggleFilters() {
 function handleNavigateToMemory(_memoryId: string) {
   // Switch to memories tab when navigating from chat
   activeTab.value = 'memories'
+}
+
+function showToast(message: string, duration = 3000) {
+  toast.value = { show: true, message }
+  setTimeout(() => {
+    toast.value.show = false
+  }, duration)
+}
+
+function handleQuickCaptureSuccess(memory: { id: string; content: string }) {
+  const preview = memory.content.slice(0, 30) + (memory.content.length > 30 ? '...' : '')
+  showToast(`Memory created: "${preview}"`)
 }
 </script>
 
@@ -179,5 +200,37 @@ function handleNavigateToMemory(_memoryId: string) {
 
     <!-- Onboarding Overlay -->
     <OnboardingOverlay />
+
+    <!-- Floating Action Button -->
+    <button
+      @click="showQuickCapture = true"
+      class="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40 group"
+      title="Quick Capture (Ctrl+Shift+N)"
+    >
+      <Plus class="w-6 h-6 group-hover:rotate-90 transition-transform duration-200" />
+    </button>
+
+    <!-- Quick Capture Modal -->
+    <QuickCaptureModal
+      :is-open="showQuickCapture"
+      @close="showQuickCapture = false"
+      @success="handleQuickCaptureSuccess"
+    />
+
+    <!-- Toast Notification -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 translate-y-2"
+      leave-to-class="opacity-0 translate-y-2"
+    >
+      <div
+        v-if="toast.show"
+        class="fixed bottom-24 right-6 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2"
+      >
+        <Check class="w-5 h-5" />
+        <span>{{ toast.message }}</span>
+      </div>
+    </Transition>
   </div>
 </template>

@@ -116,10 +116,9 @@ omni-cortex-dashboard
 
 Or manually:
 ```bash
-# Terminal 1: Backend
+# Terminal 1: Backend (uses dashboard's own venv)
 cd dashboard/backend
-pip install -e .
-uvicorn main:app --host 0.0.0.0 --port 8765 --reload
+.venv/Scripts/python -m uvicorn main:app --host 127.0.0.1 --port 8765 --reload
 
 # Terminal 2: Frontend
 cd dashboard/frontend
@@ -128,6 +127,8 @@ npm run dev
 ```
 
 Open http://localhost:5173 in your browser.
+
+**Note:** The dashboard has its own virtual environment at `dashboard/backend/.venv` with FastAPI and other web dependencies. This is separate from the project root `.venv` which contains the MCP server package.
 
 ### Troubleshooting
 
@@ -447,8 +448,12 @@ git clone https://github.com/AllCytes/Omni-Cortex.git
 cd Omni-Cortex
 pip install -e .
 
-# Install dashboard dependencies
-cd dashboard/backend && pip install -r requirements.txt
+# Dashboard backend has its own venv (already included in repo)
+# If missing, set it up:
+cd dashboard/backend
+python -m venv .venv
+.venv/Scripts/pip install -r requirements.txt  # Windows
+# .venv/bin/pip install -r requirements.txt    # macOS/Linux
 cd ../frontend && npm install
 cd ../..
 
@@ -458,6 +463,27 @@ omni-cortex-dashboard --help
 ```
 
 **Important**: Always use `pip install -e .` (editable mode) so changes are immediately reflected without reinstalling.
+
+### Project Structure
+
+```
+omni-cortex/
+├── .venv/                       # Project root venv (omni-cortex MCP package)
+├── src/omni_cortex/             # MCP server source code
+├── dashboard/
+│   ├── backend/
+│   │   ├── .venv/               # Dashboard backend venv (FastAPI, uvicorn)
+│   │   ├── main.py              # FastAPI application
+│   │   └── database.py          # Database queries
+│   └── frontend/                # Vue 3 + Vite frontend
+├── adws/                        # Agentic Development Workflows
+├── specs/                       # Implementation plans
+│   ├── todo/                    # Plans waiting to be built
+│   └── done/                    # Completed plans
+└── tests/                       # Unit tests
+```
+
+**Why two venvs?** The dashboard is a standalone web application that can be packaged/deployed separately from the MCP server. They have different dependencies (MCP server needs `mcp`, dashboard needs `fastapi`).
 
 ### Running Tests
 

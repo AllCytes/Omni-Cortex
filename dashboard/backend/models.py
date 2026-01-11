@@ -128,6 +128,16 @@ class FilterParams(BaseModel):
     offset: int = 0
 
 
+class MemoryCreateRequest(BaseModel):
+    """Create request for a new memory."""
+
+    content: str = Field(..., min_length=1, max_length=50000)
+    memory_type: str = Field(default="general")
+    context: Optional[str] = None
+    importance_score: int = Field(default=50, ge=1, le=100)
+    tags: list[str] = Field(default_factory=list)
+
+
 class MemoryUpdate(BaseModel):
     """Update request for a memory."""
 

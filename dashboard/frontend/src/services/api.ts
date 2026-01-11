@@ -76,6 +76,25 @@ export async function deleteMemory(dbPath: string, memoryId: string): Promise<{ 
   return response.data
 }
 
+export interface MemoryCreateRequest {
+  content: string
+  memory_type?: string
+  context?: string
+  importance_score?: number
+  tags?: string[]
+}
+
+export async function createMemory(
+  dbPath: string,
+  request: MemoryCreateRequest
+): Promise<Memory> {
+  const response = await api.post<Record<string, unknown>>(
+    `/memories?project=${encodeURIComponent(dbPath)}`,
+    request
+  )
+  return normalizeMemory(response.data)
+}
+
 // Activities
 export async function getActivities(
   dbPath: string,

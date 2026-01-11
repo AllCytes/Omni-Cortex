@@ -207,6 +207,22 @@ export const useDashboardStore = defineStore('dashboard', () => {
     applyFilters({ search: query })
   }
 
+  async function createMemory(request: api.MemoryCreateRequest): Promise<Memory | null> {
+    if (!currentDbPath.value) return null
+
+    try {
+      const created = await api.createMemory(currentDbPath.value, request)
+      handleMemoryCreated(created)
+      // Refresh tags to include any new ones
+      await loadTags()
+      return created
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to create memory'
+      console.error('Failed to create memory:', e)
+      return null
+    }
+  }
+
   async function updateMemory(memoryId: string, updates: MemoryUpdate): Promise<Memory | null> {
     if (!currentDbPath.value) return null
 
@@ -411,6 +427,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     applyFilters,
     resetFilters,
     search,
+    createMemory,
     updateMemory,
     deleteMemoryById,
 

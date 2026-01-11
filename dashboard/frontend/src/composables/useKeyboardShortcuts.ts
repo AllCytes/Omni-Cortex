@@ -5,6 +5,13 @@ export function useKeyboardShortcuts() {
   const store = useDashboardStore()
 
   function handleKeydown(e: KeyboardEvent) {
+    // Ctrl+Shift+N - Quick capture (works even when typing)
+    if (e.ctrlKey && e.shiftKey && e.key === 'N') {
+      e.preventDefault()
+      window.dispatchEvent(new CustomEvent('show-quick-capture'))
+      return
+    }
+
     // Ignore if user is typing in an input
     const target = e.target as HTMLElement
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {

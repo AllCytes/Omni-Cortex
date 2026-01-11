@@ -31,6 +31,7 @@ except ImportError:
 
 from database import (
     bulk_update_memory_status,
+    create_memory,
     delete_memory,
     ensure_migrations,
     get_activities,
@@ -62,6 +63,7 @@ from models import (
     ConversationSaveRequest,
     ConversationSaveResponse,
     FilterParams,
+    MemoryCreateRequest,
     MemoryUpdate,
     ProjectInfo,
     ProjectRegistration,
@@ -385,6 +387,46 @@ async def list_memories(
         return memories
     except Exception as e:
         log_error("/api/memories", e, project=project)
+        raise
+
+
+@app.post("/api/memories")
+@rate_limit("30/minute")
+async def create_memory_endpoint(
+    request: MemoryCreateRequest,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Create a new memory."""
+    try:
+        if not Path(project).exists():
+            log_error("/api/memories POST", FileNotFoundError("Database not found"), project=project)
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        # Create the memory
+        memory_id = create_memory(
+            db_path=project,
+            content=request.content,
+            memory_type=request.memory_type,
+            context=request.context,
+            tags=request.tags if request.tags else None,
+            importance_score=request.importance_score,
+        )
+
+        # Fetch the created memory to return it
+        created_memory = get_memory_by_id(project, memory_id)
+
+        # Broadcast to WebSocket clients
+        await manager.broadcast("memory_created", created_memory.model_dump(by_alias=True))
+
+        log_success("/api/memories POST", memory_id=memory_id, type=request.memory_type)
+        return created_memory
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[DEBUG] create_memory_endpoint error: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        log_error("/api/memories POST", e, project=project)
         raise
 
 
