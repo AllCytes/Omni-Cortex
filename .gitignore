@@ -155,3 +155,8 @@ PROMPT.md
 memories.json
 .claude/
 .mcp.json
+
+# Personal/local files
+adws/
+specs/omni-cortex-adw-system.md
+nul
