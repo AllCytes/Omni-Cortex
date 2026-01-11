@@ -157,6 +157,7 @@ memories.json
 .mcp.json
 
 # Personal/local files
-adws/
+# adws/ - removed, now tracking ADW orchestrators
 specs/omni-cortex-adw-system.md
 nul
+*.bak
