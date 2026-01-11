@@ -4,6 +4,16 @@ Thank you for your interest in contributing to Omni-Cortex!
 
 ## Development Setup
 
+### Quick Setup (with Claude Code)
+
+If you're using Claude Code, just run:
+
+```bash
+/dev-setup
+```
+
+This command will guide you through the entire setup process.
+
 ### Prerequisites
 
 - Python 3.10+

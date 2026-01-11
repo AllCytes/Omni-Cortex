@@ -257,17 +257,46 @@ The PDFs use a light theme with blue/purple/green accents. Edit `docs/create_pdf
 
 ## Development
 
-```bash
-# Install dev dependencies
-pip install -e ".[dev]"
+### Quick Setup (with Claude Code)
 
-# Run tests
+If you're using Claude Code, just run:
+
+```bash
+/dev-setup
+```
+
+This will guide you through setting up the development environment.
+
+### Manual Setup
+
+```bash
+# Clone and install in editable mode
+git clone https://github.com/AllCytes/Omni-Cortex.git
+cd Omni-Cortex
+pip install -e .
+
+# Install dashboard dependencies
+cd dashboard/backend && pip install -r requirements.txt
+cd ../frontend && npm install
+cd ../..
+
+# Verify installation
+omni-cortex --help
+omni-cortex-dashboard --help
+```
+
+**Important**: Always use `pip install -e .` (editable mode) so changes are immediately reflected without reinstalling.
+
+### Running Tests
+
+```bash
 pytest
 
-# Format code
-black src tests
-ruff check src tests
+# With coverage
+pytest --cov=src/omni_cortex
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full development guidelines.
 
 ## Security
 

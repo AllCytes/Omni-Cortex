@@ -129,6 +129,144 @@ def truncate(text: str, max_length: int = 10000) -> str:
     return text[:max_length - 20] + "\n... [truncated]"
 
 
+def extract_skill_info(tool_input: dict, project_path: str) -> tuple:
+    """Extract skill name and scope from Skill tool input.
+
+    Returns:
+        Tuple of (skill_name, command_scope)
+    """
+    try:
+        skill_name = tool_input.get("skill", "")
+        if not skill_name:
+            return None, None
+
+        # Determine scope by checking file locations
+        project_cmd = Path(project_path) / ".claude" / "commands" / f"{skill_name}.md"
+        if project_cmd.exists():
+            return skill_name, "project"
+
+        universal_cmd = Path.home() / ".claude" / "commands" / f"{skill_name}.md"
+        if universal_cmd.exists():
+            return skill_name, "universal"
+
+        return skill_name, "unknown"
+    except Exception:
+        return None, None
+
+
+def extract_mcp_server(tool_name: str) -> str:
+    """Extract MCP server name from tool name pattern mcp__servername__toolname."""
+    if not tool_name or not tool_name.startswith("mcp__"):
+        return None
+
+    parts = tool_name.split("__")
+    if len(parts) >= 3:
+        return parts[1]
+    return None
+
+
+def ensure_analytics_columns(conn: sqlite3.Connection) -> None:
+    """Ensure command analytics columns exist in activities table."""
+    cursor = conn.cursor()
+    columns = cursor.execute("PRAGMA table_info(activities)").fetchall()
+    column_names = [col[1] for col in columns]
+
+    new_columns = [
+        ("command_name", "TEXT"),
+        ("command_scope", "TEXT"),
+        ("mcp_server", "TEXT"),
+        ("skill_name", "TEXT"),
+        ("summary", "TEXT"),
+        ("summary_detail", "TEXT"),
+    ]
+
+    for col_name, col_type in new_columns:
+        if col_name not in column_names:
+            cursor.execute(f"ALTER TABLE activities ADD COLUMN {col_name} {col_type}")
+
+    conn.commit()
+
+
+def generate_summary(tool_name: str, tool_input: dict, success: bool) -> tuple:
+    """Generate short and detailed summaries for an activity.
+
+    Returns:
+        Tuple of (summary, summary_detail)
+    """
+    if not tool_name:
+        return None, None
+
+    input_data = tool_input if isinstance(tool_input, dict) else {}
+    short = ""
+    detail = ""
+
+    if tool_name == "Read":
+        path = input_data.get("file_path", "unknown")
+        filename = Path(path).name if path else "file"
+        short = f"Read file: {filename}"
+        detail = f"Reading contents of {path}"
+
+    elif tool_name == "Write":
+        path = input_data.get("file_path", "unknown")
+        filename = Path(path).name if path else "file"
+        short = f"Write file: {filename}"
+        detail = f"Writing/creating file at {path}"
+
+    elif tool_name == "Edit":
+        path = input_data.get("file_path", "unknown")
+        filename = Path(path).name if path else "file"
+        short = f"Edit file: {filename}"
+        detail = f"Editing {path}"
+
+    elif tool_name == "Bash":
+        cmd = str(input_data.get("command", ""))[:50]
+        short = f"Run: {cmd}..."
+        detail = f"Executing: {input_data.get('command', 'unknown')}"
+
+    elif tool_name == "Grep":
+        pattern = input_data.get("pattern", "")
+        short = f"Search: {pattern[:30]}"
+        detail = f"Searching for pattern: {pattern}"
+
+    elif tool_name == "Glob":
+        pattern = input_data.get("pattern", "")
+        short = f"Find files: {pattern[:30]}"
+        detail = f"Finding files matching: {pattern}"
+
+    elif tool_name == "Skill":
+        skill = input_data.get("skill", "unknown")
+        short = f"Run skill: /{skill}"
+        detail = f"Executing slash command /{skill}"
+
+    elif tool_name == "Task":
+        desc = input_data.get("description", "task")
+        short = f"Spawn agent: {desc[:30]}"
+        detail = f"Launching sub-agent: {desc}"
+
+    elif tool_name == "TodoWrite":
+        todos = input_data.get("todos", [])
+        count = len(todos) if isinstance(todos, list) else 0
+        short = f"Update todo: {count} items"
+        detail = f"Managing task list with {count} items"
+
+    elif tool_name.startswith("mcp__"):
+        parts = tool_name.split("__")
+        server = parts[1] if len(parts) > 1 else "unknown"
+        tool = parts[2] if len(parts) > 2 else tool_name
+        short = f"MCP: {server}/{tool}"
+        detail = f"Calling {tool} from MCP server {server}"
+
+    else:
+        short = f"Tool: {tool_name}"
+        detail = f"Using tool {tool_name}"
+
+    if not success:
+        short = f"[FAILED] {short}"
+        detail = f"[FAILED] {detail}"
+
+    return short, detail
+
+
 def main():
     """Process PostToolUse hook."""
     try:
@@ -164,6 +302,9 @@ def main():
         db_path = get_db_path()
         conn = ensure_database(db_path)
 
+        # Ensure analytics columns exist
+        ensure_analytics_columns(conn)
+
         # Get or create session (auto-manages session lifecycle)
         session_id = get_or_create_session(conn, project_path)
 
@@ -171,14 +312,36 @@ def main():
         safe_input = redact_sensitive_fields(tool_input) if isinstance(tool_input, dict) else tool_input
         safe_output = redact_sensitive_fields(tool_output) if isinstance(tool_output, dict) else tool_output
 
-        # Insert activity record
+        # Extract command analytics
+        skill_name = None
+        command_scope = None
+        mcp_server = None
+
+        # Extract skill info from Skill tool calls
+        if tool_name == "Skill" and isinstance(tool_input, dict):
+            skill_name, command_scope = extract_skill_info(tool_input, project_path)
+
+        # Extract MCP server from tool name (mcp__servername__toolname pattern)
+        if tool_name and tool_name.startswith("mcp__"):
+            mcp_server = extract_mcp_server(tool_name)
+
+        # Generate summary for activity
+        summary = None
+        summary_detail = None
+        try:
+            summary, summary_detail = generate_summary(tool_name, safe_input, not is_error)
+        except Exception:
+            pass
+
+        # Insert activity record with analytics columns
         cursor = conn.cursor()
         cursor.execute(
             """
             INSERT INTO activities (
                 id, session_id, agent_id, timestamp, event_type,
-                tool_name, tool_input, tool_output, success, error_message, project_path
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                tool_name, tool_input, tool_output, success, error_message, project_path,
+                skill_name, command_scope, mcp_server, summary, summary_detail
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 generate_id(),
@@ -192,6 +355,11 @@ def main():
                 0 if is_error else 1,
                 error_message,
                 project_path,
+                skill_name,
+                command_scope,
+                mcp_server,
+                summary,
+                summary_detail,
             ),
         )
         conn.commit()
