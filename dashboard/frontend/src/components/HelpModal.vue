@@ -30,9 +30,6 @@ const shortcuts = [
     { key: 'Enter', description: 'Select first memory' },
     { key: '?', description: 'Open this help dialog' }
   ]},
-  { group: 'Actions', items: [
-    { key: 'r', description: 'Refresh data' }
-  ]},
   { group: 'Quick Filters', items: [
     { key: '1-9', description: 'Filter by memory type (decision, solution, etc.)' }
   ]}

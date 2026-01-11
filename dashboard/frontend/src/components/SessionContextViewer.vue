@@ -2,7 +2,8 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { getRecentSessions, type RecentSession } from '@/services/api'
-import { Clock, Activity, ChevronDown, ChevronUp, Calendar } from 'lucide-vue-next'
+import { Clock, Activity, ChevronDown, ChevronUp, Radio, Zap } from 'lucide-vue-next'
+import LiveElapsedTime from './LiveElapsedTime.vue'
 
 const store = useDashboardStore()
 const sessions = ref<RecentSession[]>([])
@@ -10,22 +11,43 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const expanded = ref(false)
 
-const lastSession = computed(() => sessions.value[0] || null)
+// Use store sessions when available (WebSocket updates), fallback to local fetch
+const displaySessions = computed(() => {
+  if (store.recentSessions.length > 0) {
+    return store.recentSessions
+  }
+  return sessions.value
+})
 
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+const lastSession = computed(() => displaySessions.value[0] || null)
 
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins} min ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+// Recent activity count (from store activities, updated via WebSocket)
+const recentActivityCount = computed(() => store.activities.length)
+
+// Most recent activity timestamp (for live elapsed time)
+const mostRecentActivityTimestamp = computed(() => {
+  if (store.activities.length > 0) {
+    return store.activities[0].timestamp
+  }
+  return null
+})
+
+// Generate a summary of recent tool usage
+const recentToolsSummary = computed(() => {
+  const toolCounts = new Map<string, number>()
+  // Count tools from recent activities (up to 50)
+  store.activities.slice(0, 50).forEach(a => {
+    if (a.tool_name) {
+      const name = a.tool_name.startsWith('mcp__')
+        ? a.tool_name.split('__')[1] || a.tool_name
+        : a.tool_name
+      toolCounts.set(name, (toolCounts.get(name) || 0) + 1)
+    }
+  })
+  // Sort by count and take top 3
+  const sorted = [...toolCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+  return sorted.map(([name]) => name).join(', ')
+})
 
 function formatDuration(startedAt: string, endedAt: string | null): string {
   if (!endedAt) return 'Ongoing'
@@ -58,6 +80,12 @@ async function loadData() {
 onMounted(loadData)
 
 watch(() => store.currentProject, loadData)
+
+// Auto-reload when new activities are logged (WebSocket push)
+watch(() => store.lastActivityTimestamp, () => {
+  // Reload sessions when new activity detected
+  loadData()
+})
 </script>
 
 <template>
@@ -70,6 +98,11 @@ watch(() => store.currentProject, loadData)
       <div class="flex items-center gap-2">
         <Clock class="w-5 h-5 text-blue-500" />
         <h2 class="font-semibold">Session Context</h2>
+        <!-- Live indicator -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs">
+          <Radio class="w-3 h-3 animate-pulse" />
+          <span>Live</span>
+        </div>
       </div>
       <component :is="expanded ? ChevronUp : ChevronDown" class="w-5 h-5 text-gray-400" />
     </div>
@@ -85,12 +118,31 @@ watch(() => store.currentProject, loadData)
     </div>
 
     <template v-else>
-      <!-- Last Session Summary (always visible) -->
-      <div class="px-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+      <!-- Current Activity Snapshot (live data from WebSocket) -->
+      <div v-if="recentActivityCount > 0" class="px-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+        <div class="flex items-center gap-4 text-sm">
+          <div v-if="mostRecentActivityTimestamp" class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+            <LiveElapsedTime :timestamp="mostRecentActivityTimestamp" show-icon />
+          </div>
+          <div class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+            <Zap class="w-4 h-4 text-amber-500" />
+            <span>{{ recentActivityCount }} activities loaded</span>
+          </div>
+          <span class="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs animate-pulse">
+            Active
+          </span>
+        </div>
+        <p v-if="recentToolsSummary" class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+          Recent tools: {{ recentToolsSummary }}
+        </p>
+      </div>
+
+      <!-- Historical Session Summary (from database) -->
+      <div v-if="lastSession" class="px-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+        <div class="text-xs text-gray-400 dark:text-gray-500 mb-2">Last recorded session:</div>
         <div class="flex items-center gap-4 text-sm">
           <div class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-            <Calendar class="w-4 h-4" />
-            <span>{{ formatRelativeTime(lastSession.started_at) }}</span>
+            <LiveElapsedTime :timestamp="lastSession.started_at" show-icon />
           </div>
           <div class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
             <Activity class="w-4 h-4" />
@@ -98,9 +150,9 @@ watch(() => store.currentProject, loadData)
           </div>
           <span
             v-if="!lastSession.ended_at"
-            class="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs"
+            class="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs"
           >
-            Active
+            Not ended
           </span>
         </div>
         <p v-if="lastSession.summary" class="mt-2 text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
@@ -111,14 +163,12 @@ watch(() => store.currentProject, loadData)
       <!-- Expanded: All Recent Sessions -->
       <div v-if="expanded" class="divide-y divide-gray-100 dark:divide-gray-700">
         <div
-          v-for="session in sessions.slice(1)"
+          v-for="session in displaySessions.slice(1)"
           :key="session.id"
           class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
         >
           <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600 dark:text-gray-400">
-              {{ formatRelativeTime(session.started_at) }}
-            </span>
+            <LiveElapsedTime :timestamp="session.started_at" compact />
             <div class="flex items-center gap-3">
               <span class="text-gray-500 dark:text-gray-500">
                 {{ formatDuration(session.started_at, session.ended_at) }}
@@ -126,6 +176,12 @@ watch(() => store.currentProject, loadData)
               <span class="flex items-center gap-1 text-gray-500">
                 <Activity class="w-3.5 h-3.5" />
                 {{ session.activity_count }}
+              </span>
+              <span
+                v-if="!session.ended_at"
+                class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs"
+              >
+                Active
               </span>
             </div>
           </div>

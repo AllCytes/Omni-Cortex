@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useTheme } from '@/composables/useTheme'
 import { useElapsedTime } from '@/composables/useElapsedTime'
-import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, RefreshCw, Download, HelpCircle, Settings } from 'lucide-vue-next'
+import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, Download, HelpCircle, Settings } from 'lucide-vue-next'
 import ProjectSwitcher from './ProjectSwitcher.vue'
 import ExportPanel from './ExportPanel.vue'
 import HelpModal from './HelpModal.vue'
@@ -23,7 +23,6 @@ const showExportPanel = ref(false)
 const showHelp = ref(false)
 const showProjectManagement = ref(false)
 const showSettings = ref(false)
-const isRefreshing = ref(false)
 
 // Live elapsed time since last update
 const { formattedElapsed: lastUpdatedText } = useElapsedTime(
@@ -53,15 +52,6 @@ function handleKeydown(e: KeyboardEvent) {
     searchQuery.value = ''
     store.search('')
   }
-}
-
-async function handleRefresh() {
-  if (isRefreshing.value) return
-  isRefreshing.value = true
-  await store.refresh()
-  setTimeout(() => {
-    isRefreshing.value = false
-  }, 500)
 }
 
 function openProjectManagement() {
@@ -132,16 +122,6 @@ onUnmounted(() => {
 
         <!-- Actions -->
         <div class="flex items-center gap-2">
-          <!-- Refresh Button -->
-          <button
-            @click="handleRefresh"
-            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            :class="{ 'animate-spin': isRefreshing }"
-            title="Refresh data"
-          >
-            <RefreshCw class="w-5 h-5" />
-          </button>
-
           <!-- Export Button -->
           <button
             @click="showExportPanel = true"

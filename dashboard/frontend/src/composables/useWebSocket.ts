@@ -86,6 +86,19 @@ export function useWebSocket() {
         store.handleDatabaseChanged()
         break
 
+      // Live feed events (IndyDevDan pattern)
+      case 'activity_logged':
+        store.handleActivityLogged(event.data as { project: string; activity: Record<string, unknown> })
+        break
+
+      case 'session_updated':
+        store.handleSessionUpdated(event.data as { project: string; session: Record<string, unknown> })
+        break
+
+      case 'stats_updated':
+        store.handleStatsUpdated(event.data as { project: string; stats: Record<string, unknown> })
+        break
+
       default:
         logger.log('[WS] Unknown event type:', event.event_type)
     }

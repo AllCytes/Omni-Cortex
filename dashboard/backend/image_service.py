@@ -209,9 +209,9 @@ Tags: {', '.join(memory.tags) if memory.tags else 'N/A'}
             if preset_prompt:
                 parts.append(f"\nImage style guidance:\n{preset_prompt}")
 
-        # Add user's custom prompt
+        # Add user's custom prompt (escaped to prevent injection)
         if request.custom_prompt:
-            parts.append(f"\nUser request: {request.custom_prompt}")
+            parts.append(f"\nUser request: {xml_escape(request.custom_prompt)}")
 
         parts.append("\nGenerate a professional, high-quality image optimized for social media sharing.")
 
@@ -461,10 +461,10 @@ Tags: {', '.join(memory.tags) if memory.tags else 'N/A'}
                 "parts": parts
             })
 
-        # Add refinement prompt
+        # Add refinement prompt (escaped to prevent injection)
         contents.append({
             "role": "user",
-            "parts": [{"text": refinement_prompt}]
+            "parts": [{"text": xml_escape(refinement_prompt)}]
         })
 
         # Configure - use defaults or provided values

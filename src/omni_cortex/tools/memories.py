@@ -22,7 +22,7 @@ from ..models.memory import (
 from ..models.relationship import create_relationship, get_relationships, VALID_RELATIONSHIP_TYPES
 from ..search.hybrid import search
 from ..search.ranking import calculate_relevance_score
-from ..utils.formatting import format_memory_markdown, format_memories_list_markdown
+from ..utils.formatting import format_memory_markdown, format_memories_list_markdown, detect_injection_patterns
 from ..embeddings import generate_and_store_embedding, is_model_available
 from ..config import load_config
 from ..database.sync import sync_memory_to_global, delete_memory_from_global
@@ -157,6 +157,14 @@ def register_memory_tools(mcp: FastMCP) -> None:
             project_path = str(get_project_path())
             session_id = get_session_id()
 
+            # Detect potential injection patterns in content
+            injection_warnings = detect_injection_patterns(params.content)
+            if injection_warnings:
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"Memory content contains potential injection patterns: {injection_warnings}"
+                )
+
             # Create the memory
             memory_data = MemoryCreate(
                 content=params.content,
@@ -218,13 +226,16 @@ def register_memory_tools(mcp: FastMCP) -> None:
             )
 
             embedding_status = "with embedding" if has_embedding else "no embedding"
-            return (
+            result = (
                 f"Remembered: {memory.id}\n"
                 f"Type: {memory.type}\n"
                 f"Tags: {', '.join(memory.tags) if memory.tags else 'none'}\n"
                 f"Importance: {memory.importance_score:.0f}/100\n"
                 f"Search: {embedding_status}"
             )
+            if injection_warnings:
+                result += f"\n[Security Note: Content contains patterns that may be injection attempts: {', '.join(injection_warnings)}]"
+            return result
 
         except Exception as e:
             return f"Error storing memory: {e}"

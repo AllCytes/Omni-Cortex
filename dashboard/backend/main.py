@@ -135,6 +135,7 @@ class DatabaseChangeHandler(FileSystemEventHandler):
         self.loop = loop
         self._debounce_task: Optional[asyncio.Task] = None
         self._last_path: Optional[str] = None
+        self._last_activity_count: dict[str, int] = {}
 
     def on_modified(self, event):
         if event.src_path.endswith("cortex.db") or event.src_path.endswith("global.db"):
@@ -146,9 +147,35 @@ class DatabaseChangeHandler(FileSystemEventHandler):
                 )
 
     async def _debounced_notify(self):
-        await asyncio.sleep(0.5)  # Wait for rapid changes to settle
+        await asyncio.sleep(0.3)  # Reduced from 0.5s for faster updates
         if self._last_path:
-            await self.ws_manager.broadcast("database_changed", {"path": self._last_path})
+            db_path = self._last_path
+
+            # Broadcast general database change
+            await self.ws_manager.broadcast("database_changed", {"path": db_path})
+
+            # Fetch and broadcast latest activities (IndyDevDan pattern)
+            try:
+                # Get recent activities
+                recent = get_activities(db_path, limit=5, offset=0)
+                if recent:
+                    # Broadcast each new activity
+                    for activity in recent:
+                        await self.ws_manager.broadcast_activity_logged(
+                            db_path,
+                            activity if isinstance(activity, dict) else activity.model_dump()
+                        )
+
+                    # Also broadcast session update
+                    sessions = get_recent_sessions(db_path, limit=1)
+                    if sessions:
+                        session = sessions[0]
+                        await self.ws_manager.broadcast_session_updated(
+                            db_path,
+                            session if isinstance(session, dict) else dict(session)
+                        )
+            except Exception as e:
+                print(f"[WS] Error broadcasting activities: {e}")
 
 
 # File watcher

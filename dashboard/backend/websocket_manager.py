@@ -77,6 +77,28 @@ class WebSocketManager:
         """Get the number of active connections."""
         return len(self.connections)
 
+    # Typed broadcast methods (IndyDevDan pattern)
+    async def broadcast_activity_logged(self, project: str, activity: dict[str, Any]):
+        """Broadcast when a new activity is logged."""
+        await self.broadcast("activity_logged", {
+            "project": project,
+            "activity": activity,
+        })
+
+    async def broadcast_session_updated(self, project: str, session: dict[str, Any]):
+        """Broadcast when a session is updated."""
+        await self.broadcast("session_updated", {
+            "project": project,
+            "session": session,
+        })
+
+    async def broadcast_stats_updated(self, project: str, stats: dict[str, Any]):
+        """Broadcast when stats change (for charts/panels)."""
+        await self.broadcast("stats_updated", {
+            "project": project,
+            "stats": stats,
+        })
+
 
 # Global manager instance
 manager = WebSocketManager()

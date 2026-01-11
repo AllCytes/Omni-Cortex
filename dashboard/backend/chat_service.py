@@ -214,9 +214,13 @@ async def save_conversation(
     client = get_client()
     if client:
         try:
+            # Escape content to prevent injection in summary generation
+            safe_content = xml_escape(content[:2000])
             summary_prompt = f"""Summarize this conversation in one concise sentence (max 100 chars):
 
-{content[:2000]}
+<conversation>
+{safe_content}
+</conversation>
 
 Summary:"""
             response = client.models.generate_content(

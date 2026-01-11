@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
-import { Clock, CheckCircle, Wrench, Database, FileText, RefreshCw, ChevronDown, ChevronRight, Server, Terminal, Copy, Check } from 'lucide-vue-next'
+import { Clock, CheckCircle, Wrench, Database, FileText, ChevronDown, ChevronRight, Server, Terminal, Copy, Check, Radio } from 'lucide-vue-next'
 import type { Activity } from '@/types'
 import { getActivityDetail, type ActivityDetail } from '@/services/api'
+import LiveElapsedTime from './LiveElapsedTime.vue'
 
 const store = useDashboardStore()
 
-const activities = ref<Activity[]>([])
 const isLoading = ref(false)
-// const timeRange = ref<number>(24) // TODO: implement time range filtering
 const filterEventType = ref<string | null>(null)
 const filterToolName = ref<string | null>(null)
 const filterCommand = ref<string>('')
+
+// Use store activities for live updates
+const activities = computed(() => store.activities)
 
 // Expandable state
 const expandedIds = ref<Set<string>>(new Set())
@@ -76,10 +78,7 @@ async function loadActivities() {
 
   isLoading.value = true
   try {
-    const response = await fetch(
-      `/api/activities?project=${encodeURIComponent(store.currentDbPath)}&limit=200`
-    )
-    activities.value = await response.json()
+    await store.loadActivities()
   } catch (e) {
     console.error('Failed to load activities:', e)
   } finally {
@@ -87,18 +86,235 @@ async function loadActivities() {
   }
 }
 
-function formatTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
-
 function formatDuration(ms: number | null): string {
   if (!ms) return '-'
   if (ms < 1000) return `${ms}ms`
   return `${(ms / 1000).toFixed(1)}s`
+}
+
+// Generate brief summary for collapsed view (1-12 words)
+function generateBriefSummary(activity: Activity): string {
+  // Return existing summary if available
+  if (activity.summary) return activity.summary
+
+  const toolName = activity.tool_name || 'unknown'
+  let inputData: Record<string, unknown> = {}
+
+  // Parse tool input if available
+  if (activity.tool_input) {
+    try {
+      inputData = JSON.parse(activity.tool_input)
+    } catch {
+      // Ignore parsing errors
+    }
+  }
+
+  // Generate summaries based on tool type
+  if (toolName === 'Read') {
+    const path = (inputData.file_path as string) || activity.file_path || 'file'
+    const filename = path.split(/[/\\]/).pop() || 'file'
+    return `Read file: ${filename}`
+  }
+
+  if (toolName === 'Write') {
+    const path = (inputData.file_path as string) || activity.file_path || 'file'
+    const filename = path.split(/[/\\]/).pop() || 'file'
+    return `Write file: ${filename}`
+  }
+
+  if (toolName === 'Edit') {
+    const path = (inputData.file_path as string) || activity.file_path || 'file'
+    const filename = path.split(/[/\\]/).pop() || 'file'
+    return `Edit file: ${filename}`
+  }
+
+  if (toolName === 'Bash') {
+    const cmd = ((inputData.command as string) || '').slice(0, 40)
+    return cmd ? `Run: ${cmd}...` : 'Run command'
+  }
+
+  if (toolName === 'Grep') {
+    const pattern = ((inputData.pattern as string) || '').slice(0, 25)
+    return pattern ? `Search: ${pattern}` : 'Search codebase'
+  }
+
+  if (toolName === 'Glob') {
+    const pattern = ((inputData.pattern as string) || '').slice(0, 25)
+    return pattern ? `Find files: ${pattern}` : 'Find files'
+  }
+
+  if (toolName === 'Skill') {
+    const skill = (inputData.skill as string) || 'unknown'
+    return `Run skill: /${skill}`
+  }
+
+  if (toolName === 'Task') {
+    const desc = ((inputData.description as string) || 'task').slice(0, 30)
+    return `Spawn agent: ${desc}`
+  }
+
+  if (toolName === 'WebSearch') {
+    const query = ((inputData.query as string) || '').slice(0, 25)
+    return query ? `Web search: ${query}` : 'Web search'
+  }
+
+  if (toolName === 'WebFetch') {
+    const url = ((inputData.url as string) || '').slice(0, 35)
+    return url ? `Fetch: ${url}` : 'Fetch URL'
+  }
+
+  if (toolName === 'TodoWrite') {
+    const todos = inputData.todos as unknown[]
+    const count = Array.isArray(todos) ? todos.length : 0
+    return `Update todos: ${count} items`
+  }
+
+  if (toolName === 'AskUserQuestion') {
+    const questions = inputData.questions as unknown[]
+    const count = Array.isArray(questions) ? questions.length : 1
+    return `Ask user: ${count} question(s)`
+  }
+
+  if (toolName.startsWith('mcp__')) {
+    const parts = toolName.split('__')
+    const server = parts[1] || 'unknown'
+    const tool = parts[2] || toolName
+    return `MCP: ${server}/${tool}`
+  }
+
+  if (toolName.includes('remember') || toolName.includes('cortex_remember')) {
+    const params = inputData.params as Record<string, unknown>
+    const content = (params?.content as string) || ''
+    return content ? `Store: ${content.slice(0, 25)}...` : 'Store memory'
+  }
+
+  if (toolName.includes('recall') || toolName.includes('cortex_recall')) {
+    const params = inputData.params as Record<string, unknown>
+    const query = (params?.query as string) || ''
+    return query ? `Recall: ${query.slice(0, 25)}` : 'Recall memories'
+  }
+
+  if (toolName === 'NotebookEdit') {
+    const path = (inputData.notebook_path as string) || ''
+    const filename = path.split(/[/\\]/).pop() || 'notebook'
+    return `Edit notebook: ${filename}`
+  }
+
+  // Default fallback
+  return `${activity.event_type.replace('_', ' ')}: ${toolName}`
+}
+
+// Generate detailed summary for expanded view (12-20 words)
+function generateDetailSummary(activity: Activity, detail?: ActivityDetail | null): string {
+  // Return existing detail summary if available
+  if (detail?.summary_detail) return detail.summary_detail
+
+  const toolName = activity.tool_name || 'unknown'
+  let inputData: Record<string, unknown> = {}
+
+  // Parse tool input (prefer full input from detail if available)
+  const toolInput = detail?.tool_input_full || activity.tool_input
+  if (toolInput) {
+    try {
+      inputData = JSON.parse(toolInput)
+    } catch {
+      // Ignore parsing errors
+    }
+  }
+
+  const status = activity.success ? '' : '[FAILED] '
+
+  if (toolName === 'Read') {
+    const path = (inputData.file_path as string) || activity.file_path || 'unknown file'
+    return `${status}Reading contents of file: ${path}`
+  }
+
+  if (toolName === 'Write') {
+    const path = (inputData.file_path as string) || activity.file_path || 'unknown file'
+    return `${status}Writing or creating file at path: ${path}`
+  }
+
+  if (toolName === 'Edit') {
+    const path = (inputData.file_path as string) || activity.file_path || 'unknown file'
+    return `${status}Editing file by replacing text content in: ${path}`
+  }
+
+  if (toolName === 'Bash') {
+    const cmd = (inputData.command as string) || 'unknown command'
+    return `${status}Executing bash command: ${cmd.slice(0, 100)}`
+  }
+
+  if (toolName === 'Grep') {
+    const pattern = (inputData.pattern as string) || ''
+    const path = (inputData.path as string) || 'codebase'
+    return `${status}Searching for pattern "${pattern}" in ${path}`
+  }
+
+  if (toolName === 'Glob') {
+    const pattern = (inputData.pattern as string) || ''
+    return `${status}Finding files matching glob pattern: ${pattern}`
+  }
+
+  if (toolName === 'Skill') {
+    const skill = (inputData.skill as string) || 'unknown'
+    const args = (inputData.args as string) || ''
+    return `${status}Executing slash command /${skill}${args ? ` with args: ${args}` : ''}`
+  }
+
+  if (toolName === 'Task') {
+    const desc = (inputData.description as string) || 'task'
+    const prompt = (inputData.prompt as string) || desc
+    return `${status}Launching sub-agent for: ${prompt.slice(0, 80)}`
+  }
+
+  if (toolName === 'WebSearch') {
+    const query = (inputData.query as string) || ''
+    return `${status}Searching the web for information about: ${query}`
+  }
+
+  if (toolName === 'WebFetch') {
+    const url = (inputData.url as string) || ''
+    return `${status}Fetching and processing content from URL: ${url}`
+  }
+
+  if (toolName === 'TodoWrite') {
+    const todos = inputData.todos as unknown[]
+    const count = Array.isArray(todos) ? todos.length : 0
+    return `${status}Managing task list with ${count} todo items`
+  }
+
+  if (toolName === 'AskUserQuestion') {
+    const questions = inputData.questions as unknown[]
+    const count = Array.isArray(questions) ? questions.length : 1
+    return `${status}Prompting user for input with ${count} question(s)`
+  }
+
+  if (toolName.startsWith('mcp__')) {
+    const parts = toolName.split('__')
+    const server = parts[1] || 'unknown'
+    const tool = parts[2] || toolName
+    return `${status}Calling ${tool} tool from MCP server ${server}`
+  }
+
+  if (toolName.includes('remember') || toolName.includes('cortex_remember')) {
+    const params = inputData.params as Record<string, unknown>
+    const content = (params?.content as string) || ''
+    return `${status}Saving to memory system: ${content.slice(0, 80)}`
+  }
+
+  if (toolName.includes('recall') || toolName.includes('cortex_recall')) {
+    const params = inputData.params as Record<string, unknown>
+    const query = (params?.query as string) || ''
+    return `${status}Searching memories for: ${query}`
+  }
+
+  if (toolName === 'NotebookEdit') {
+    const path = (inputData.notebook_path as string) || ''
+    return `${status}Editing Jupyter notebook: ${path}`
+  }
+
+  // Default fallback
+  return `${status}Activity type ${activity.event_type} with tool ${toolName}`
 }
 
 function getEventIcon(eventType: string) {
@@ -226,15 +442,11 @@ watch(() => store.currentDbPath, () => {
           </div>
         </div>
 
-        <!-- Refresh -->
-        <button
-          @click="loadActivities"
-          :disabled="isLoading"
-          class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          <RefreshCw :class="['w-4 h-4', isLoading && 'animate-spin']" />
-          Refresh
-        </button>
+        <!-- Live indicator (pure push model - no manual refresh needed) -->
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg">
+          <Radio class="w-4 h-4 animate-pulse" />
+          <span class="text-sm font-medium">Live</span>
+        </div>
       </div>
 
       <!-- Stats -->
@@ -289,7 +501,10 @@ watch(() => store.currentDbPath, () => {
             <div
               v-for="activity in items"
               :key="activity.id"
-              class="rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-colors"
+              :class="[
+                'rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-600 transition-all',
+                store.isNewActivity(activity.id) && 'activity-highlight'
+              ]"
             >
               <!-- Main row (clickable to expand) -->
               <div
@@ -339,11 +554,8 @@ watch(() => store.currentDbPath, () => {
                   </div>
 
                   <!-- Natural Language Summary (collapsed view) -->
-                  <p
-                    v-if="activity.summary"
-                    class="text-sm text-gray-600 dark:text-gray-300 mt-1"
-                  >
-                    {{ activity.summary }}
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                    {{ generateBriefSummary(activity) }}
                   </p>
 
                   <!-- Error Message -->
@@ -365,10 +577,8 @@ watch(() => store.currentDbPath, () => {
 
                 <!-- Meta -->
                 <div class="text-right text-sm flex-shrink-0">
-                  <div class="text-gray-500 dark:text-gray-400">
-                    {{ formatTime(activity.timestamp) }}
-                  </div>
-                  <div v-if="activity.duration_ms" class="text-gray-400 dark:text-gray-500">
+                  <LiveElapsedTime :timestamp="activity.timestamp" compact show-icon />
+                  <div v-if="activity.duration_ms" class="text-gray-400 dark:text-gray-500 mt-1">
                     {{ formatDuration(activity.duration_ms) }}
                   </div>
                 </div>
@@ -387,12 +597,13 @@ watch(() => store.currentDbPath, () => {
 
                 <!-- Details content -->
                 <template v-else-if="activityDetails.has(activity.id)">
-                  <!-- Detailed Summary -->
-                  <div v-if="activityDetails.get(activity.id)?.summary_detail" class="mb-4">
-                    <h4 class="font-medium text-sm mb-1">What happened:</h4>
-                    <p class="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                      {{ activityDetails.get(activity.id)?.summary_detail }}
-                    </p>
+                  <!-- Detailed Summary (styled description box) -->
+                  <div class="mb-4">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p class="text-sm text-gray-700 dark:text-gray-300">
+                        {{ generateDetailSummary(activity, activityDetails.get(activity.id)) }}
+                      </p>
+                    </div>
                   </div>
 
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -447,3 +658,29 @@ watch(() => store.currentDbPath, () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Highlight animation for new activities */
+.activity-highlight {
+  animation: highlight-glow 3s ease-out;
+  background-color: rgb(59 130 246 / 0.1);
+  border-color: rgb(59 130 246 / 0.3) !important;
+}
+
+@keyframes highlight-glow {
+  0% {
+    background-color: rgb(59 130 246 / 0.3);
+    border-color: rgb(59 130 246 / 0.5);
+  }
+  100% {
+    background-color: transparent;
+    border-color: transparent;
+  }
+}
+
+/* Dark mode highlight */
+:deep(.dark) .activity-highlight {
+  background-color: rgb(59 130 246 / 0.15);
+  border-color: rgb(59 130 246 / 0.4) !important;
+}
+</style>

@@ -235,22 +235,34 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  // Live feed state (IndyDevDan pattern)
+  const recentActivities = ref<Activity[]>([])
+  const recentSessions = ref<Array<{ id: string; started_at: string; ended_at: string | null; activity_count: number; summary: string | null }>>([])
+  const newActivityIds = ref<Set<string>>(new Set())  // For highlight animation
+  const lastActivityTimestamp = ref<number>(0)
+
   // WebSocket event handlers
   function handleMemoryCreated(memory: Memory) {
+    // Forced reactivity with spread (IndyDevDan pattern)
     memories.value = [memory, ...memories.value]
     if (stats.value) {
-      stats.value.total_count++
+      stats.value = { ...stats.value, total_count: stats.value.total_count + 1 }
     }
+    lastUpdated.value = Date.now()
   }
 
   function handleMemoryUpdated(memory: Memory) {
     const index = memories.value.findIndex(m => m.id === memory.id)
     if (index !== -1) {
-      memories.value[index] = memory
+      // Forced reactivity
+      const updated = [...memories.value]
+      updated[index] = memory
+      memories.value = updated
     }
     if (selectedMemory.value?.id === memory.id) {
       selectedMemory.value = memory
     }
+    lastUpdated.value = Date.now()
   }
 
   function handleMemoryDeleted(memoryId: string) {
@@ -259,8 +271,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
       selectedMemory.value = null
     }
     if (stats.value) {
-      stats.value.total_count--
+      stats.value = { ...stats.value, total_count: stats.value.total_count - 1 }
     }
+    lastUpdated.value = Date.now()
   }
 
   function handleDatabaseChanged() {
@@ -268,10 +281,91 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loadMemories(true)
     loadStats()
     loadTags()
+    lastUpdated.value = Date.now()
+  }
+
+  // Live feed handlers (IndyDevDan pattern)
+  function handleActivityLogged(data: { project: string; activity: Record<string, unknown> }) {
+    // Only process if it's for our current project
+    if (!currentDbPath.value || !data.project.includes(currentProject.value?.name || '')) {
+      // Check if project path matches
+      const normalizedCurrent = currentDbPath.value.replace(/\\/g, '/').toLowerCase()
+      const normalizedData = data.project.replace(/\\/g, '/').toLowerCase()
+      if (!normalizedData.includes(normalizedCurrent) && !normalizedCurrent.includes(normalizedData)) {
+        return
+      }
+    }
+
+    const activity = data.activity as unknown as Activity
+
+    // Check if we already have this activity (dedup)
+    const exists = recentActivities.value.some(a => a.id === activity.id)
+    if (exists) return
+
+    // Add to recent activities with forced reactivity (prepend, limit to 100)
+    recentActivities.value = [activity, ...recentActivities.value].slice(0, 100)
+
+    // Also update main activities array
+    const mainExists = activities.value.some(a => a.id === activity.id)
+    if (!mainExists) {
+      activities.value = [activity, ...activities.value].slice(0, 200)
+    }
+
+    // Mark as new for highlight animation (clear after 3 seconds)
+    newActivityIds.value = new Set([...newActivityIds.value, activity.id])
+    setTimeout(() => {
+      newActivityIds.value = new Set([...newActivityIds.value].filter(id => id !== activity.id))
+    }, 3000)
+
+    lastActivityTimestamp.value = Date.now()
+    lastUpdated.value = Date.now()
+  }
+
+  function handleSessionUpdated(data: { project: string; session: Record<string, unknown> }) {
+    // Only process if it's for our current project
+    const normalizedCurrent = currentDbPath.value.replace(/\\/g, '/').toLowerCase()
+    const normalizedData = data.project.replace(/\\/g, '/').toLowerCase()
+    if (!normalizedData.includes(normalizedCurrent) && !normalizedCurrent.includes(normalizedData)) {
+      return
+    }
+
+    const session = data.session as { id: string; started_at: string; ended_at: string | null; activity_count: number; summary: string | null }
+
+    // Update or add session
+    const index = recentSessions.value.findIndex(s => s.id === session.id)
+    if (index !== -1) {
+      const updated = [...recentSessions.value]
+      updated[index] = session
+      recentSessions.value = updated
+    } else {
+      recentSessions.value = [session, ...recentSessions.value].slice(0, 10)
+    }
+
+    lastUpdated.value = Date.now()
+  }
+
+  function handleStatsUpdated(data: { project: string; stats: Record<string, unknown> }) {
+    const normalizedCurrent = currentDbPath.value.replace(/\\/g, '/').toLowerCase()
+    const normalizedData = data.project.replace(/\\/g, '/').toLowerCase()
+    if (!normalizedData.includes(normalizedCurrent) && !normalizedCurrent.includes(normalizedData)) {
+      return
+    }
+
+    // Update stats with forced reactivity
+    if (data.stats) {
+      stats.value = data.stats as unknown as MemoryStats
+    }
+
+    lastUpdated.value = Date.now()
   }
 
   function setConnected(connected: boolean) {
     isConnected.value = connected
+  }
+
+  // Helper to check if activity is new (for animation)
+  function isNewActivity(activityId: string): boolean {
+    return newActivityIds.value.has(activityId)
   }
 
   return {
@@ -291,6 +385,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     isConnected,
     lastUpdated,
     hasMore,
+
+    // Live feed state (IndyDevDan pattern)
+    recentActivities,
+    recentSessions,
+    newActivityIds,
+    lastActivityTimestamp,
 
     // Computed
     currentDbPath,
@@ -320,5 +420,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
     handleMemoryDeleted,
     handleDatabaseChanged,
     setConnected,
+
+    // Live feed handlers (IndyDevDan pattern)
+    handleActivityLogged,
+    handleSessionUpdated,
+    handleStatsUpdated,
+    isNewActivity,
   }
 })

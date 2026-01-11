@@ -1,10 +1,43 @@
 """Output formatting utilities for Omni Cortex."""
 
 import json
+import re
+from html import escape as html_escape
 from typing import Any, Optional
 from datetime import datetime
 
 from .timestamps import format_relative_time
+
+
+def xml_escape(text: str) -> str:
+    """Escape text for safe inclusion in XML-structured outputs.
+
+    Prevents prompt injection by escaping special characters that
+    could be interpreted as XML/instruction delimiters.
+    """
+    return html_escape(text, quote=True)
+
+
+# Known prompt injection patterns
+_INJECTION_PATTERNS = [
+    (r'(?i)(ignore|disregard|forget)\s+(all\s+)?(previous|prior|above)\s+instructions?',
+     'instruction override'),
+    (r'(?i)(new\s+)?system\s+(prompt|instruction|message)',
+     'system prompt manipulation'),
+    (r'(?i)\[/?system\]|\[/?inst\]|<\/?system>|<\/?instruction>',
+     'fake delimiter'),
+    (r'(?i)bypass|jailbreak|DAN|GODMODE',
+     'jailbreak signature'),
+]
+
+
+def detect_injection_patterns(content: str) -> list[str]:
+    """Detect potential prompt injection patterns in content."""
+    detected = []
+    for pattern, description in _INJECTION_PATTERNS:
+        if re.search(pattern, content):
+            detected.append(description)
+    return detected
 
 
 def format_memory_markdown(
@@ -27,9 +60,13 @@ def format_memory_markdown(
     lines.append(f"## [{mem_type}] {memory.get('id', 'unknown')}")
     lines.append("")
 
-    # Content
+    # Content - XML escape to prevent prompt injection when returned to Claude
     content = memory.get("content", "")
-    lines.append(content)
+    # Detect and flag potential injection patterns
+    injections = detect_injection_patterns(content)
+    if injections:
+        lines.append(f"[Security Note: Content contains patterns that may be injection attempts: {', '.join(injections)}]")
+    lines.append(xml_escape(content))
     lines.append("")
 
     # Metadata
@@ -43,10 +80,10 @@ def format_memory_markdown(
         if tags:
             lines.append(f"**Tags:** {', '.join(tags)}")
 
-    # Context
+    # Context - also escape
     context = memory.get("context")
     if context:
-        lines.append(f"**Context:** {context}")
+        lines.append(f"**Context:** {xml_escape(context)}")
 
     # Timestamps
     created = memory.get("created_at")
@@ -72,7 +109,7 @@ def format_memory_markdown(
         for related in related_memories[:3]:  # Limit to 3
             rel_type = related.get("relationship_type", "related_to")
             rel_id = related.get("id", "unknown")
-            rel_content = related.get("content", "")[:50]
+            rel_content = xml_escape(related.get("content", "")[:50])
             lines.append(f"  - [{rel_type}] {rel_id}: {rel_content}...")
 
     return "\n".join(lines)
@@ -189,7 +226,7 @@ def format_timeline_markdown(
         else:
             mem = item["data"]
             lines.append(f"**Memory created**: [{mem.get('type')}] {mem.get('id')}")
-            content = mem.get("content", "")[:100]
+            content = xml_escape(mem.get("content", "")[:100])
             lines.append(f"  > {content}...")
         lines.append("")
 
