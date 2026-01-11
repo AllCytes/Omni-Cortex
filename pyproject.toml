@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "omni-cortex"
-version = "1.7.0"
+version = "1.7.1"
 description = "Give Claude Code a perfect memory - auto-logs everything, searches smartly, and gets smarter over time"
 readme = "README.md"
 license = "MIT"
@@ -31,6 +31,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "httpx>=0.25.0",
     "pyyaml>=6.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.urls]

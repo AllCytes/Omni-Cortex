@@ -39,7 +39,179 @@ A universal memory system for Claude Code that combines activity logging with in
 - **Importance Decay**: Frequently accessed memories naturally surface
 - **Auto Activity Logging**: Automatically logs all tool calls via hooks
 
-## Installation
+## Getting Started (5 Minutes)
+
+A step-by-step guide to get Omni Cortex running on your machine.
+
+### Prerequisites
+
+- **Python 3.10+** - Check with `python --version`
+- **Claude Code CLI** - The Anthropic CLI tool
+- **pip** - Python package manager (comes with Python)
+
+### Step 1: Install the Package
+
+**Option A: From PyPI (Recommended for most users)**
+```bash
+pip install omni-cortex
+```
+
+**Option B: From Source (For development/contributions)**
+```bash
+git clone https://github.com/AllCytes/Omni-Cortex.git
+cd Omni-Cortex
+pip install -e ".[semantic]"
+```
+
+**Expected output:**
+```
+Successfully installed omni-cortex-1.7.1
+```
+
+### Step 2: Run the Setup
+
+```bash
+omni-cortex-setup
+```
+
+This automatically:
+- Adds Omni Cortex as an MCP server in `~/.claude.json`
+- Configures hooks in `~/.claude/settings.json` for activity logging
+
+**Expected output:**
+```
+✓ MCP server configured
+✓ Hooks configured
+Setup complete! Restart Claude Code to activate.
+```
+
+### Step 3: Restart Claude Code
+
+Close and reopen your Claude Code terminal. This loads the new MCP configuration.
+
+### Step 4: Verify It's Working
+
+In Claude Code, try storing a memory:
+
+```
+Ask Claude: "Remember that the database uses SQLite for storage"
+```
+
+Claude should use the `cortex_remember` tool. Then verify:
+
+```
+Ask Claude: "What do you remember about the database?"
+```
+
+Claude should use `cortex_recall` and find your memory.
+
+### Step 5: Start the Dashboard (Optional)
+
+The web dashboard lets you browse and search memories visually.
+
+```bash
+# Start the dashboard (opens http://localhost:5173)
+omni-cortex-dashboard
+```
+
+Or manually:
+```bash
+# Terminal 1: Backend
+cd dashboard/backend
+pip install -e .
+uvicorn main:app --host 0.0.0.0 --port 8765 --reload
+
+# Terminal 2: Frontend
+cd dashboard/frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 in your browser.
+
+### Troubleshooting
+
+<details>
+<summary><b>❌ "omni-cortex-setup" command not found</b></summary>
+
+**Cause:** pip installed to a location not in your PATH.
+
+**Solution:**
+```bash
+# Find where pip installed it
+python -m omni_cortex.setup
+
+# Or add Python scripts to PATH (Windows)
+# Add %APPDATA%\Python\Python3x\Scripts to your PATH
+
+# On macOS/Linux, ensure ~/.local/bin is in PATH
+export PATH="$HOME/.local/bin:$PATH"
+```
+</details>
+
+<details>
+<summary><b>❌ Claude doesn't see cortex_* tools</b></summary>
+
+**Cause:** MCP server not configured or Claude Code not restarted.
+
+**Solution:**
+1. Check `~/.claude.json` contains the `omni-cortex` MCP server entry
+2. Fully close and reopen Claude Code (not just the terminal)
+3. Run `omni-cortex-setup` again if needed
+</details>
+
+<details>
+<summary><b>❌ "ModuleNotFoundError: No module named 'omni_cortex'"</b></summary>
+
+**Cause:** Python environment mismatch.
+
+**Solution:**
+```bash
+# Ensure you're using the same Python that pip used
+which python  # or `where python` on Windows
+pip show omni-cortex  # Check if installed
+
+# Reinstall if needed
+pip install --force-reinstall omni-cortex
+```
+</details>
+
+<details>
+<summary><b>❌ Dashboard won't start</b></summary>
+
+**Cause:** Missing dependencies or port conflict.
+
+**Solution:**
+```bash
+# Install backend dependencies
+cd dashboard/backend
+pip install -e .
+
+# Check if port 8765 is in use
+# Windows: netstat -ano | findstr :8765
+# macOS/Linux: lsof -i :8765
+
+# Use a different port if needed
+uvicorn main:app --port 8766
+```
+</details>
+
+<details>
+<summary><b>❌ Semantic search not working</b></summary>
+
+**Cause:** Semantic extras not installed.
+
+**Solution:**
+```bash
+pip install omni-cortex[semantic]
+```
+
+First search will download the embedding model (~100MB).
+</details>
+
+---
+
+## Installation (Detailed)
 
 ### Quick Install (Recommended)
 

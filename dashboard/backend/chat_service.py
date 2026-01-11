@@ -1,6 +1,7 @@
 """Chat service for natural language queries about memories using Gemini Flash."""
 
 import os
+from pathlib import Path
 from typing import Optional, AsyncGenerator, Any
 
 from dotenv import load_dotenv
@@ -9,8 +10,9 @@ from database import search_memories, get_memories, create_memory
 from models import FilterParams
 from prompt_security import build_safe_prompt, xml_escape
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project root
+_project_root = Path(__file__).parent.parent.parent
+load_dotenv(_project_root / ".env")
 
 # Configure Gemini
 _api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")

@@ -5,6 +5,7 @@ import os
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -12,7 +13,9 @@ from dotenv import load_dotenv
 from database import get_memory_by_id
 from prompt_security import xml_escape
 
-load_dotenv()
+# Load environment variables from project root
+_project_root = Path(__file__).parent.parent.parent
+load_dotenv(_project_root / ".env")
 
 
 class ImagePreset(str, Enum):
