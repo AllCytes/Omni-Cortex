@@ -413,20 +413,20 @@ async def get_aggregate_stats(request: AggregateStatsRequest):
 
             try:
                 stats = get_memory_stats(project_path)
-                total_count += stats.get('total_count', 0)
-                total_access += stats.get('total_access_count', 0)
+                total_count += stats.total_count
+                total_access += stats.total_access_count
 
                 # Weighted average for importance
-                project_count = stats.get('total_count', 0)
-                project_avg_importance = stats.get('avg_importance', 0)
+                project_count = stats.total_count
+                project_avg_importance = stats.avg_importance
                 importance_sum += project_avg_importance * project_count
 
                 # Aggregate by_type
-                for type_name, count in stats.get('by_type', {}).items():
+                for type_name, count in stats.by_type.items():
                     by_type[type_name] = by_type.get(type_name, 0) + count
 
                 # Aggregate by_status
-                for status, count in stats.get('by_status', {}).items():
+                for status, count in stats.by_status.items():
                     by_status[status] = by_status.get(status, 0) + count
             except Exception as e:
                 log_error(f"/api/aggregate/stats (project: {project_path})", e)
