@@ -1,13 +1,13 @@
 # Omni Cortex MCP - Session Handoff
 
-**Date:** January 7, 2026
+**Date:** January 12, 2026
 **Project:** D:\Projects\omni-cortex
 **GitHub:** https://github.com/AllCytes/Omni-Cortex
 **PyPI:** https://pypi.org/project/omni-cortex/
 
 ---
 
-## Current Status: v1.0.3 VERIFIED WORKING ✅ (Published to PyPI)
+## Current Status: v1.11.0 VERIFIED WORKING ✅ (Published to PyPI)
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
@@ -96,9 +96,20 @@ omni-cortex-setup
 - [x] Code review for security
 - [x] Performance profiling (test_performance.py with 6 benchmarks)
 
-## Recently Completed (Jan 7, 2026 session)
+## Recently Completed (Jan 12, 2026 session - v1.11.0)
 
-### Bug Fixes (resolves MCP "stuck" issues)
+### Dashboard Multi-Project Selector Fixes
+- [x] Fixed click-to-toggle behavior - dropdown now properly opens/closes on trigger click
+- [x] Fixed memory count display reactivity - shows correct total across selected projects
+- [x] Improved click-outside detection to exclude trigger button
+- [x] Replaced array mutations with immutable operations for better Vue 3 reactivity
+
+### ADW Enhancements
+- [x] Added `cleanup_dashboard_ports()` utility to prevent 'address already in use' errors
+- [x] Improved error handling across apply_learnings, retrospective, review, security, security_fix, and validate ADWs
+- [x] Enhanced validation and subprocess management in ADW utilities
+
+### Bug Fixes (Jan 7, 2026 session)
 - [x] Fixed Session bug in `cortex_start_session` - was passing Session objects to formatting function that expected dicts
 - [x] Fixed FK constraint in `create_activity` - agent upsert must happen BEFORE activity insert
 - [x] **REBUILT** semantic search from scratch - uses subprocess with 60s timeout (can actually be killed)
@@ -160,8 +171,13 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.0.2 - 66 tests passing, 18 tools, all phases complete.
+Status: v1.11.0 - 66 tests passing, 18 tools, all phases complete.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
+
+Recent updates:
+- Dashboard multi-project selector bugs fixed
+- ADW enhancements with port cleanup utility
+- All changes released to PyPI and GitHub
 
 All planned features complete. Optional future work:
 - API fallback for embeddings (Claude/OpenAI)
