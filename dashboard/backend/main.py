@@ -381,9 +381,9 @@ async def get_aggregate_memories(request: AggregateMemoryRequest):
                 log_error(f"/api/aggregate/memories (project: {project_path})", e)
                 continue
 
-        # Sort by last_accessed or created_at
+        # Sort by last_accessed or created_at (convert to str to handle mixed tz-aware/naive)
         all_memories.sort(
-            key=lambda x: x.get('last_accessed') or x.get('created_at') or '',
+            key=lambda x: str(x.get('last_accessed') or x.get('created_at') or ''),
             reverse=True
         )
 
