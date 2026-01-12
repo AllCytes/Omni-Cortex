@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import MemoryCard from './MemoryCard.vue'
+import DuplicationWarningBanner from './DuplicationWarningBanner.vue'
 import { Loader2 } from 'lucide-vue-next'
 
 const store = useDashboardStore()
@@ -29,6 +30,11 @@ function handleScroll() {
           ({{ store.memories.length }}{{ store.hasMore ? '+' : '' }} loaded)
         </span>
       </div>
+    </div>
+
+    <!-- Duplication Warning Banner -->
+    <div class="px-4 pt-4">
+      <DuplicationWarningBanner />
     </div>
 
     <!-- Memory List -->

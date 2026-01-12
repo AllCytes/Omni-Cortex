@@ -42,6 +42,26 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const selectedDbPaths = computed(() => selectedProjects.value.map(p => p.db_path))
   const isMultiProject = computed(() => selectedProjects.value.length > 1)
 
+  // Global Index duplication warning
+  const hasGlobalSelected = computed(() =>
+    selectedProjects.value.some(p => p.is_global)
+  )
+
+  const hasNonGlobalSelected = computed(() =>
+    selectedProjects.value.some(p => !p.is_global)
+  )
+
+  const showDuplicationWarning = computed(() =>
+    hasGlobalSelected.value && hasNonGlobalSelected.value
+  )
+
+  const estimatedOverlapCount = computed(() => {
+    if (!showDuplicationWarning.value) return 0
+    return selectedProjects.value
+      .filter(p => !p.is_global)
+      .reduce((sum, p) => sum + p.memory_count, 0)
+  })
+
   // Actions
   async function loadProjects() {
     isLoading.value = true
@@ -103,6 +123,19 @@ export const useDashboardStore = defineStore('dashboard', () => {
     memories.value = []
     stats.value = null
     tags.value = []
+  }
+
+  function selectGlobalOnly() {
+    const globalProject = projects.value.find(p => p.is_global)
+    if (globalProject) {
+      selectedProjects.value = [globalProject]
+      loadAggregateData()
+    }
+  }
+
+  function selectProjectsOnly() {
+    selectedProjects.value = selectedProjects.value.filter(p => !p.is_global)
+    loadAggregateData()
   }
 
   async function loadAggregateData() {
@@ -510,6 +543,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
     currentDbPath,
     selectedDbPaths,
     isMultiProject,
+    hasGlobalSelected,
+    hasNonGlobalSelected,
+    showDuplicationWarning,
+    estimatedOverlapCount,
 
     // Actions
     loadProjects,
@@ -518,6 +555,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     toggleProjectSelection,
     selectAllProjects,
     clearProjectSelection,
+    selectGlobalOnly,
+    selectProjectsOnly,
     loadAggregateData,
     loadMemories,
     loadMore,
