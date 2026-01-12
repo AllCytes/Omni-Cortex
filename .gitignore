@@ -164,3 +164,4 @@ nul
 
 # Claude Code temporary files
 tmpclaude-*-cwd
+agents/
