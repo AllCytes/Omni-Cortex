@@ -40,7 +40,7 @@ async def run_build(state: ADWState) -> bool:
     spec_content = ""
     spec_path = Path(state.spec)
     if spec_path.exists():
-        spec_content = spec_path.read_text()
+        spec_content = spec_path.read_text(encoding='utf-8')
 
     # Run /build skill with spec reference
     build_prompt = f"""Build the implementation based on the following spec:
