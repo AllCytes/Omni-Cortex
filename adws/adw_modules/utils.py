@@ -2,6 +2,7 @@
 
 import os
 import secrets
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -71,3 +72,107 @@ def format_duration(seconds: float) -> str:
         hours = int(seconds // 3600)
         mins = int((seconds % 3600) // 60)
         return f"{hours}h {mins}m"
+
+
+def cleanup_dashboard_ports(port: int = 8765, verbose: bool = False) -> bool:
+    """Clean up orphaned processes on dashboard port.
+
+    This prevents 'address already in use' errors when starting the dashboard
+    after a previous run didn't shut down cleanly.
+
+    Args:
+        port: Port number to clean up (default: 8765)
+        verbose: Print status messages if True
+
+    Returns:
+        True if cleanup was successful or not needed
+    """
+    import platform
+
+    if platform.system() == "Windows":
+        try:
+            # Find processes using the port
+            result = subprocess.run(
+                ["netstat", "-ano"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if result.returncode != 0:
+                if verbose:
+                    print(f"[Cleanup] Could not check port {port}")
+                return False
+
+            # Parse output to find PIDs
+            pids = []
+            for line in result.stdout.splitlines():
+                if f":{port}" in line and "LISTENING" in line:
+                    parts = line.split()
+                    if parts:
+                        pid = parts[-1]
+                        if pid.isdigit():
+                            pids.append(pid)
+
+            if not pids:
+                if verbose:
+                    print(f"[Cleanup] Port {port} is free")
+                return True
+
+            # Kill each process
+            for pid in pids:
+                try:
+                    subprocess.run(
+                        ["powershell", "-Command", f"Stop-Process -Id {pid} -Force"],
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    if verbose:
+                        print(f"[Cleanup] Killed process {pid} on port {port}")
+                except Exception as e:
+                    if verbose:
+                        print(f"[Cleanup] Failed to kill process {pid}: {e}")
+
+            return True
+
+        except Exception as e:
+            if verbose:
+                print(f"[Cleanup] Error during cleanup: {e}")
+            return False
+
+    else:
+        # Unix/Linux/Mac
+        try:
+            result = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if result.returncode != 0 or not result.stdout.strip():
+                if verbose:
+                    print(f"[Cleanup] Port {port} is free")
+                return True
+
+            pids = result.stdout.strip().split("\n")
+            for pid in pids:
+                if pid.isdigit():
+                    try:
+                        subprocess.run(["kill", "-9", pid], timeout=5)
+                        if verbose:
+                            print(f"[Cleanup] Killed process {pid} on port {port}")
+                    except Exception as e:
+                        if verbose:
+                            print(f"[Cleanup] Failed to kill process {pid}: {e}")
+
+            return True
+
+        except FileNotFoundError:
+            if verbose:
+                print("[Cleanup] lsof command not found (Unix/Linux/Mac only)")
+            return False
+        except Exception as e:
+            if verbose:
+                print(f"[Cleanup] Error during cleanup: {e}")
+            return False

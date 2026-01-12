@@ -81,10 +81,38 @@ Document:
 
 
 def main():
-    """CLI entry point - requires existing state."""
-    print("Retrospective phase requires state from previous phases.")
-    print("Use adw_complete_sdlc.py for full workflow.")
-    sys.exit(1)
+    """CLI entry point - run retrospective on an existing ADW session."""
+    if len(sys.argv) < 2:
+        print("ADW Retrospective: Document lessons learned from an ADW session")
+        print()
+        print("Usage:")
+        print("  uv run adws/adw_retrospective.py <adw-id>")
+        print("  python adws/adw_retrospective.py <adw-id>")
+        print()
+        print("Examples:")
+        print('  uv run adws/adw_retrospective.py adw_1768194349_2ac26097')
+        print()
+        sys.exit(1)
+
+    adw_id = sys.argv[1]
+
+    # Load existing state
+    state = ADWState(adw_id=adw_id)
+
+    # Check if state file exists
+    if not state.state_file.exists():
+        print(f"Error: No ADW state found for {adw_id}")
+        print(f"Expected state file: {state.state_file}")
+        sys.exit(1)
+
+    print(f"\n[ADW Retrospective] Starting retrospective for {adw_id}")
+    print(f"[ADW Retrospective] Task: {state.task}")
+    print(f"[ADW Retrospective] Completed phases: {len(state.data.completed_phases)}")
+
+    success = asyncio.run(run_retrospective(state))
+
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from adw_modules.data_types import ADWPhase
 from adw_modules.state import ADWState
 from adw_modules.agent import run_skill
-from adw_modules.utils import get_phase_dir
+from adw_modules.utils import get_phase_dir, cleanup_dashboard_ports
 
 
 async def run_validate(state: ADWState) -> bool:
@@ -76,6 +76,10 @@ Report any issues found."""
             artifacts=artifacts,
         )
         print(f"[ADW Validate] Phase failed: {output}")
+
+    # Cleanup: Kill any orphaned dashboard processes
+    print("[ADW Validate] Cleaning up dashboard processes...")
+    cleanup_dashboard_ports(port=8765, verbose=True)
 
     return success
 

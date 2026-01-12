@@ -82,10 +82,39 @@ Skip high-risk changes that need manual review.
 
 
 def main():
-    """CLI entry point - requires existing state."""
-    print("Apply Learnings phase requires state from previous phases.")
-    print("Use adw_complete_sdlc.py for full workflow.")
-    sys.exit(1)
+    """CLI entry point - run apply learnings on an existing ADW session."""
+    if len(sys.argv) < 2:
+        print("ADW Apply Learnings: Implement improvements from retrospective")
+        print()
+        print("Usage:")
+        print("  uv run adws/adw_apply_learnings.py <adw-id>")
+        print("  python adws/adw_apply_learnings.py <adw-id>")
+        print()
+        print("Examples:")
+        print('  uv run adws/adw_apply_learnings.py adw_1768194349_2ac26097')
+        print()
+        print("Note: This requires a retrospective to have been run first.")
+        sys.exit(1)
+
+    adw_id = sys.argv[1]
+
+    # Load existing state
+    state = ADWState(adw_id=adw_id)
+
+    # Check if state file exists
+    if not state.state_file.exists():
+        print(f"Error: No ADW state found for {adw_id}")
+        print(f"Expected state file: {state.state_file}")
+        sys.exit(1)
+
+    print(f"\n[ADW Apply Learnings] Starting for {adw_id}")
+    print(f"[ADW Apply Learnings] Task: {state.task}")
+    print(f"[ADW Apply Learnings] Completed phases: {len(state.data.completed_phases)}")
+
+    success = asyncio.run(run_apply_learnings(state))
+
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

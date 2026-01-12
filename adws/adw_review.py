@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from adw_modules.data_types import ADWPhase
 from adw_modules.state import ADWState
 from adw_modules.agent import run_skill
+from adw_modules.utils import cleanup_dashboard_ports
 
 
 async def run_review(state: ADWState) -> bool:
@@ -65,6 +66,10 @@ Review the implementation for:
             error_message=output,
         )
         print(f"[ADW Review] Phase failed: {output}")
+
+    # Cleanup: Kill any orphaned dashboard processes
+    print("[ADW Review] Cleaning up dashboard processes...")
+    cleanup_dashboard_ports(port=8765, verbose=True)
 
     return success
 

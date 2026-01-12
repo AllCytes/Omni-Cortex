@@ -78,10 +78,40 @@ Document any issues that cannot be fixed automatically.
 
 
 def main():
-    """CLI entry point - requires existing state."""
-    print("Security Fix phase requires state from previous phases.")
-    print("Use adw_complete_sdlc.py for full workflow.")
-    sys.exit(1)
+    """CLI entry point - run security fixes on an existing ADW session."""
+    if len(sys.argv) < 2:
+        print("ADW Security Fix: Fix security issues from audit")
+        print()
+        print("Usage:")
+        print("  uv run adws/adw_security_fix.py <adw-id>")
+        print("  python adws/adw_security_fix.py <adw-id>")
+        print()
+        print("Examples:")
+        print('  uv run adws/adw_security_fix.py adw_1768194349_2ac26097')
+        print()
+        print("Note: This requires a security audit to have been run first.")
+        print("      It will fix HIGH and CRITICAL severity issues automatically.")
+        sys.exit(1)
+
+    adw_id = sys.argv[1]
+
+    # Load existing state
+    state = ADWState(adw_id=adw_id)
+
+    # Check if state file exists
+    if not state.state_file.exists():
+        print(f"Error: No ADW state found for {adw_id}")
+        print(f"Expected state file: {state.state_file}")
+        sys.exit(1)
+
+    print(f"\n[ADW Security Fix] Starting for {adw_id}")
+    print(f"[ADW Security Fix] Task: {state.task}")
+    print(f"[ADW Security Fix] Completed phases: {len(state.data.completed_phases)}")
+
+    success = asyncio.run(run_security_fix(state))
+
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

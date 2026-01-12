@@ -75,10 +75,44 @@ Save the audit report to docs/security/ with sequential numbering.
 
 
 def main():
-    """CLI entry point - requires existing state."""
-    print("Security phase requires state from previous phases.")
-    print("Use adw_complete_sdlc.py for full workflow.")
-    sys.exit(1)
+    """CLI entry point - run security audit on an existing ADW session."""
+    if len(sys.argv) < 2:
+        print("ADW Security: Run security audit on an ADW session")
+        print()
+        print("Usage:")
+        print("  uv run adws/adw_security.py <adw-id>")
+        print("  python adws/adw_security.py <adw-id>")
+        print()
+        print("Examples:")
+        print('  uv run adws/adw_security.py adw_1768194349_2ac26097')
+        print()
+        print("This will audit for:")
+        print("  - Hardcoded secrets")
+        print("  - SQL injection vulnerabilities")
+        print("  - XSS vulnerabilities")
+        print("  - Authentication/authorization issues")
+        print("  - API security problems")
+        sys.exit(1)
+
+    adw_id = sys.argv[1]
+
+    # Load existing state
+    state = ADWState(adw_id=adw_id)
+
+    # Check if state file exists
+    if not state.state_file.exists():
+        print(f"Error: No ADW state found for {adw_id}")
+        print(f"Expected state file: {state.state_file}")
+        sys.exit(1)
+
+    print(f"\n[ADW Security] Starting security audit for {adw_id}")
+    print(f"[ADW Security] Task: {state.task}")
+    print(f"[ADW Security] Completed phases: {len(state.data.completed_phases)}")
+
+    success = asyncio.run(run_security(state))
+
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

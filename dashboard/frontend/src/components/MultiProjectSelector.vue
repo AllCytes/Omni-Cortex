@@ -32,7 +32,8 @@ function handleClearAll() {
 // Close on click outside
 function handleClickOutside(e: MouseEvent) {
   const target = e.target as HTMLElement
-  if (!target.closest('.multi-project-selector')) {
+  // Exclude both the dropdown itself AND the trigger button in .project-switcher
+  if (!target.closest('.multi-project-selector') && !target.closest('.project-switcher')) {
     emit('close')
   }
 }

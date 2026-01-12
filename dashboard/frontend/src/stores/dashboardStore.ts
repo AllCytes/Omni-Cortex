@@ -84,9 +84,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
   function toggleProjectSelection(project: Project) {
     const index = selectedProjects.value.findIndex(p => p.db_path === project.db_path)
     if (index >= 0) {
-      selectedProjects.value.splice(index, 1)
+      // Use filter for immutable array update (better reactivity)
+      selectedProjects.value = selectedProjects.value.filter(p => p.db_path !== project.db_path)
     } else {
-      selectedProjects.value.push(project)
+      // Use spread operator for immutable array update (better reactivity)
+      selectedProjects.value = [...selectedProjects.value, project]
     }
     loadAggregateData()
   }
