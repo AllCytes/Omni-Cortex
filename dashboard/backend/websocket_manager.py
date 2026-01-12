@@ -41,7 +41,7 @@ class WebSocketManager:
             "event_type": event_type,
             "data": data,
             "timestamp": datetime.now().isoformat(),
-        })
+        }, default=str)
 
         disconnected = []
         async with self._lock:
@@ -62,7 +62,7 @@ class WebSocketManager:
             "event_type": event_type,
             "data": data,
             "timestamp": datetime.now().isoformat(),
-        })
+        }, default=str)
 
         async with self._lock:
             if client_id in self.connections:
