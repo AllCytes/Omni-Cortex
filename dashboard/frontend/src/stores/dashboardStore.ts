@@ -106,7 +106,13 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function loadAggregateData() {
-    if (selectedProjects.value.length === 0) return
+    if (selectedProjects.value.length === 0) {
+      // Clear all arrays when no projects are selected
+      memories.value = []
+      stats.value = null
+      tags.value = []
+      return
+    }
 
     page.value = 0
     hasMore.value = true
