@@ -488,11 +488,17 @@ Plan → Build → Validate → Security → [decision point] → Review → Ret
 - **Recommended**: Security early, Retrospective late
 - **Best order**: Security → Review → Retrospective → Release
 
+### Security vs Red-Teaming
+- `/security` → Audits **your codebase** (every feature, Phase 4)
+- `/redteam` → Tests **Claude Code's defenses** (periodic, not per-feature)
+- Add `/redteam hooks` for LLM-integrated features only
+
 ### The Simple Rule
 1. Build it (Plan, Build, Validate)
 2. Check it (Security, Review)
 3. Document it (Retrospective)
 4. Ship it (Release)
+5. Periodically: Red-team Claude's defenses (monthly)
 
 ---
 
@@ -766,3 +772,320 @@ Generate a retrospective document that includes:
 - **Retry limits** (3 attempts) prevent infinite loops
 - **Unresolved issues** flagged with `needs-human` tag
 - **Retrospective** (phase 7) sees ALL errors via cortex_recall
+
+---
+
+## Part 9: Red-Teaming Integration (`/redteam`)
+
+### Understanding the Two Security Commands
+
+| Command | What It Audits | Focus | When to Run |
+|---------|----------------|-------|-------------|
+| `/security` | **Your codebase** | SQL injection, XSS, secrets, auth issues | Every feature (Phase 4) |
+| `/redteam` | **Claude Code itself** | Jailbreaks, prompt injection, hook defenses | Periodic validation |
+
+**Key distinction**: `/security` finds vulnerabilities in your application code. `/redteam` validates that Claude Code's defensive systems are working properly.
+
+### When to Run `/redteam`
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    RED-TEAM INTEGRATION POINTS                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌─── PERIODIC (Not Per-Feature) ───┐                               │
+│  │                                   │                               │
+│  │  • Monthly baseline check         │                               │
+│  │  • After patterns.yaml updates    │                               │
+│  │  • After Claude Code updates      │                               │
+│  │  • When setting up new environment│                               │
+│  │                                   │                               │
+│  └───────────────────────────────────┘                               │
+│                                                                      │
+│  ┌─── SECURITY-CRITICAL FEATURES ───┐                               │
+│  │                                   │                               │
+│  │  When building features that:     │                               │
+│  │  • Handle user-provided prompts   │                               │
+│  │  • Process external content       │                               │
+│  │  • Interact with LLM APIs         │                               │
+│  │  Run /redteam hooks before deploy │                               │
+│  │                                   │                               │
+│  └───────────────────────────────────┘                               │
+│                                                                      │
+│  ┌─── POST-INCIDENT ────────────────┐                               │
+│  │                                   │                               │
+│  │  • After a jailbreak attempt      │                               │
+│  │  • After adding new attack        │                               │
+│  │    patterns to defense            │                               │
+│  │  • After hook modifications       │                               │
+│  │                                   │                               │
+│  └───────────────────────────────────┘                               │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Red-Team Modes Reference
+
+| Mode | Tests | Duration | Use Case |
+|------|-------|----------|----------|
+| `/redteam` (full) | 50+ generated + 24 manual | 3-5 min | Monthly baseline |
+| `/redteam quick` | 24 Pliny-specific tests | 1-2 min | After pattern updates |
+| `/redteam hooks` | 3 hook validation tests | 30 sec | After hook changes |
+| `/redteam view` | Open last results | Instant | Review previous run |
+
+### Recipe Modifications with Red-Teaming
+
+#### Recipe 6: LLM-Integrated Feature (with Red-Teaming)
+
+**When to use**: Features that process user prompts, external content, or interact with LLM APIs.
+
+```
+Phase 1: /quick-plan "Add prompt processing feature"
+Phase 2: /build specs/todo/prompt-feature.md
+Phase 3: /validate
+Phase 4: /security           ← Audit your code
+Phase 5: /security-fix
+Phase 6: /redteam hooks      ← Verify Claude's defenses work
+Phase 7: /review
+Phase 8: /retrospective
+Phase 9: /apply-learnings
+Phase 10: /omni
+```
+
+**Why red-team here?** If you're building features that handle prompts or external content, verifying that Claude Code's injection defenses are active protects against prompt injection attacks during development.
+
+#### Recipe 7: Environment Setup / New Machine
+
+**When to use**: Setting up Claude Code on a new machine or after major updates.
+
+```
+1. Install Claude Code
+2. Configure hooks in settings.json
+3. Run /redteam hooks      ← Verify hooks are configured correctly
+4. Run /redteam quick      ← Baseline defense check
+5. Store baseline: cortex_remember "Red-team baseline on [date]: [results]"
+```
+
+#### Recipe 8: Monthly Security Maintenance
+
+**When to use**: Monthly scheduled security validation.
+
+```
+1. /redteam               ← Full defense validation
+2. Review results
+3. If failures:
+   a. Update patterns.yaml with new attack patterns
+   b. Re-run /redteam quick to verify fixes
+   c. cortex_remember the new patterns added
+4. /security [project]    ← Audit active projects
+5. cortex_remember "Monthly security check [date]: [summary]"
+```
+
+### Integration into Standard 9-Phase Workflow
+
+For most features, `/redteam` is **NOT** part of the per-feature workflow:
+
+```
+Standard Feature (9 phases):
+Plan → Build → Validate → Security → Security-Fix → Review → Retrospective → Apply-Learnings → Release
+                            │
+                            └── /security audits YOUR CODE (every feature)
+
+Red-Team (separate, periodic):
+/redteam tests CLAUDE CODE'S DEFENSES (monthly or after changes)
+```
+
+**Exception**: Add `/redteam hooks` as Phase 6.5 when:
+- Your feature handles user-provided prompts
+- You're processing content from external APIs (WebFetch)
+- You're building prompt-based workflows or agents
+
+### Decision Flowchart: When to Add Red-Teaming
+
+```
+                            START
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │ Does this feature handle:     │
+              │ - User-provided prompts?      │
+              │ - External content (APIs)?    │
+              │ - LLM interactions?           │
+              └──────────────┬────────────────┘
+                      │              │
+                     YES             NO
+                      │              │
+                      ▼              ▼
+              ┌──────────────┐  ┌────────────────────────┐
+              │ Add /redteam │  │ Skip red-teaming       │
+              │ hooks after  │  │ (use standard 9-phase) │
+              │ /security-fix│  └────────────────────────┘
+              └──────────────┘
+
+        Also run /redteam monthly regardless of feature type
+```
+
+### /redteam vs /security Comparison
+
+| Aspect | `/security` | `/redteam` |
+|--------|-------------|------------|
+| **Target** | Your application code | Claude Code's defenses |
+| **Finds** | SQL injection, XSS, secrets, auth | Jailbreaks, prompt injection bypass |
+| **Frequency** | Every feature | Monthly or after changes |
+| **In ADW phases?** | Yes (Phase 4) | Rarely (only for LLM features) |
+| **Creates fixes?** | Yes → `/security-fix` | No, updates patterns.yaml manually |
+| **Automated in ADW?** | Yes | No (separate maintenance task) |
+
+### ADW Implementation: adw_with_redteam.py
+
+For features that warrant red-teaming:
+
+```python
+# Only for LLM-integrated features
+async def run_llm_feature_sdlc(task: str):
+    # Standard phases 1-5
+    await run_plan(task, adw_id)
+    await run_build(state)
+    await run_validate(state)
+    await run_security(state)
+    await run_security_fix(state)
+
+    # Red-team verification (only for LLM features)
+    await run_redteam_hooks(state)  # Quick hook validation
+
+    # Continue standard phases
+    await run_review(state)
+    await run_retrospective(state)
+    await run_apply_learnings(state)
+    await run_release(state)
+```
+
+### Summary: Red-Teaming in the Workflow
+
+| Scenario | Include Red-Team? | Which Mode? |
+|----------|-------------------|-------------|
+| Standard feature | No | N/A |
+| Feature with prompt handling | Yes (Phase 6.5) | `/redteam hooks` |
+| Monthly maintenance | Yes (standalone) | `/redteam` full |
+| After patterns.yaml update | Yes (standalone) | `/redteam quick` |
+| After hook script changes | Yes (standalone) | `/redteam hooks` |
+| New environment setup | Yes (standalone) | `/redteam hooks` + `/redteam quick` |
+| After jailbreak attempt | Yes (standalone) | `/redteam` full |
+
+---
+
+## Part 10: Security Subagent Architecture
+
+### Overview
+
+The `/security` skill uses a **subagent architecture** to run 5 security audit areas in parallel, preventing context window bloat and enabling modular execution.
+
+```
+/security (orchestrator)
+    │
+    ├── Spawns: Task(security-preprod) → preprod.json
+    ├── Spawns: Task(security-secrets) → secrets.json
+    ├── Spawns: Task(security-api)     → api.json
+    ├── Spawns: Task(security-input)   → input.json
+    └── Runs:   Area 5 (Prompt Injection) → injection.json
+    │
+    └── Aggregates all JSON → Final Report + OmniCortex
+```
+
+### Security Sub-Skills
+
+| Skill | Purpose | Ken's Course Section |
+|-------|---------|---------------------|
+| `/security-preprod` | Pre-production checklist (11 steps) | Pre-Production Security Audit |
+| `/security-secrets` | Environment variables & secrets (10 steps) | Environment Variables & Secrets |
+| `/security-api` | API security basics (9 steps) | API Security Basics |
+| `/security-input` | Input validation & sanitization (9 steps) | Input Validation & Sanitization |
+| `/security` | Orchestrator + Area 5 (Prompt Injection) | All + AI Security |
+
+### Running Individual Security Areas
+
+Run specific areas when you know the issue domain:
+
+```bash
+/security preprod    # Only pre-production checklist
+/security secrets    # Only secrets/env var audit
+/security api        # Only API security
+/security input      # Only input validation
+/security injection  # Only prompt injection (AI security)
+```
+
+### Quick vs Full Mode
+
+```bash
+/security           # Full audit (all areas)
+/security quick     # Abbreviated audit (critical patterns only)
+```
+
+### Benefits of Subagent Architecture
+
+| Aspect | Monolithic (Old) | Subagent (New) |
+|--------|------------------|----------------|
+| Context usage | ~2500 lines | ~500 lines (orchestrator) |
+| Ken's prompts | Condensed/summarized | Verbatim execution |
+| Individual areas | Not possible | Run any area alone |
+| Parallel execution | Sequential | 4 areas in parallel |
+| Failure isolation | All fail | One area fails, others continue |
+
+### Output Structure
+
+Each subagent writes to `.claude/temp/security/{area}.json`:
+
+```json
+{
+  "area": "preprod",
+  "timestamp": "ISO-8601",
+  "findings": [
+    {
+      "severity": "critical|high|medium|low",
+      "title": "Issue title",
+      "file": "path/to/file:line",
+      "description": "What's wrong",
+      "fix": "How to fix it",
+      "fixed": true|false
+    }
+  ],
+  "summary": { "critical": 0, "high": 0, "medium": 0, "low": 0, "fixed": 0 },
+  "checklist": { ... }
+}
+```
+
+Orchestrator aggregates into final report: `docs/security/audit-YYYY-MM-DD-NNN.md`
+
+---
+
+## Part 11: Complete Command Reference
+
+| Phase | Command | Purpose | When to Skip |
+|-------|---------|---------|--------------|
+| 1 | `/quick-plan` | Create spec | Never |
+| 2 | `/build` | Implement | Never |
+| 3 | `/validate` | Verify works | Never |
+| 4 | `/security` | Audit code (5 areas via subagents) | Low-risk internal tools |
+| 5 | `/security-fix` | Fix vulnerabilities | If phase 4 found nothing |
+| 6 | `/review` | Spec compliance | Trivial changes |
+| 6.5 | `/redteam hooks` | Verify Claude defenses | Non-LLM features |
+| 7 | `/retrospective` | Document lessons | Quick fixes |
+| 8 | `/apply-learnings` | Implement improvements | If retro had no recommendations |
+| 9 | `/omni` | Release | Never (if publishing) |
+
+### Security Sub-Skills (Can Run Standalone)
+
+| Command | Audit Area | Steps |
+|---------|------------|-------|
+| `/security-preprod` | Pre-production checklist | 11 |
+| `/security-secrets` | Environment variables & secrets | 10 |
+| `/security-api` | API security basics | 9 |
+| `/security-input` | Input validation & sanitization | 9 |
+
+### Periodic Commands (Not in ADW)
+
+| Command | Frequency | Purpose |
+|---------|-----------|---------|
+| `/redteam` | Monthly | Full defense baseline |
+| `/redteam quick` | After pattern updates | Verify new patterns work |
+| `/redteam hooks` | After hook changes | Verify hooks configured |

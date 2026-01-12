@@ -929,9 +929,21 @@ const emit = defineEmits<{
                     @mouseleave="handleSourceMouseLeave"
                     class="flex items-start gap-2 w-full text-left p-2 rounded bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
                   >
-                    <span :class="[getTypeColorClass(source.type), 'px-1.5 py-0.5 rounded text-xs font-medium']">
+                    <!-- Project Badge -->
+                    <span
+                      v-if="source.project_name"
+                      class="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded text-xs font-medium flex-shrink-0"
+                      :title="source.project_path"
+                    >
+                      {{ source.project_name }}
+                    </span>
+
+                    <!-- Type Badge -->
+                    <span :class="[getTypeColorClass(source.type), 'px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0']">
                       {{ source.type }}
                     </span>
+
+                    <!-- Content Preview -->
                     <span class="flex-1 text-gray-600 dark:text-gray-300 truncate">
                       {{ source.content_preview }}
                     </span>

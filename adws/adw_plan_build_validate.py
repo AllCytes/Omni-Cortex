@@ -85,7 +85,17 @@ async def run_plan_build_validate(task_description: str) -> bool:
         state.mark_failed("Validate phase failed")
         return False
 
-    # All phases complete
+    # All phases complete - move spec file to done/
+    if state.spec:
+        spec_path = Path(state.spec)
+        if spec_path.exists() and "specs/todo/" in str(spec_path):
+            done_dir = Path("specs/done")
+            done_dir.mkdir(parents=True, exist_ok=True)
+            new_spec_path = done_dir / spec_path.name
+            spec_path.rename(new_spec_path)
+            state.spec = str(new_spec_path)
+            print(f"\n[ORCHESTRATOR] Moved spec: {spec_path.name} -> specs/done/")
+
     state.mark_completed()
     elapsed = time.time() - start_time
 

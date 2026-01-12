@@ -6,7 +6,8 @@ import * as api from '@/services/api'
 export const useDashboardStore = defineStore('dashboard', () => {
   // State
   const projects = ref<Project[]>([])
-  const currentProject = ref<Project | null>(null)
+  const selectedProjects = ref<Project[]>([])
+  const currentProject = computed(() => selectedProjects.value[0] || null)
   const memories = ref<Memory[]>([])
   const selectedMemory = ref<Memory | null>(null)
   const stats = ref<MemoryStats | null>(null)
@@ -38,6 +39,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   // Computed
   const currentDbPath = computed(() => currentProject.value?.db_path ?? '')
+  const selectedDbPaths = computed(() => selectedProjects.value.map(p => p.db_path))
+  const isMultiProject = computed(() => selectedProjects.value.length > 1)
 
   // Actions
   async function loadProjects() {
@@ -68,17 +71,48 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function switchProject(project: Project) {
-    currentProject.value = project
+    selectedProjects.value = [project]
     // Reset state
     memories.value = []
     selectedMemory.value = null
     page.value = 0
     hasMore.value = true
     // Load data for new project
+    await loadAggregateData()
+  }
+
+  function toggleProjectSelection(project: Project) {
+    const index = selectedProjects.value.findIndex(p => p.db_path === project.db_path)
+    if (index >= 0) {
+      selectedProjects.value.splice(index, 1)
+    } else {
+      selectedProjects.value.push(project)
+    }
+    loadAggregateData()
+  }
+
+  function selectAllProjects() {
+    selectedProjects.value = [...projects.value]
+    loadAggregateData()
+  }
+
+  function clearProjectSelection() {
+    selectedProjects.value = []
+    memories.value = []
+    stats.value = null
+    tags.value = []
+  }
+
+  async function loadAggregateData() {
+    if (selectedProjects.value.length === 0) return
+
+    page.value = 0
+    hasMore.value = true
+
     await Promise.all([
-      loadMemories(true),
-      loadStats(),
-      loadTags(),
+      loadAggregateMemories(),
+      loadAggregateStats(),
+      loadAggregateTags(),
     ])
   }
 
@@ -148,6 +182,61 @@ export const useDashboardStore = defineStore('dashboard', () => {
       tags.value = await api.getTags(currentDbPath.value)
     } catch (e) {
       console.error('Failed to load tags:', e)
+    }
+  }
+
+  async function loadAggregateMemories(reset = true) {
+    if (selectedDbPaths.value.length === 0) return
+
+    if (reset) {
+      page.value = 0
+      hasMore.value = true
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const newMemories = await api.getAggregateMemories(
+        selectedDbPaths.value,
+        filters.value,
+        pageSize.value,
+        page.value * pageSize.value
+      )
+
+      if (reset) {
+        memories.value = newMemories
+      } else {
+        memories.value = [...memories.value, ...newMemories]
+      }
+
+      hasMore.value = newMemories.length === pageSize.value
+      lastUpdated.value = Date.now()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to load memories'
+      console.error('Failed to load aggregate memories:', e)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function loadAggregateStats() {
+    if (selectedDbPaths.value.length === 0) return
+
+    try {
+      stats.value = await api.getAggregateStats(selectedDbPaths.value)
+    } catch (e) {
+      console.error('Failed to load aggregate stats:', e)
+    }
+  }
+
+  async function loadAggregateTags() {
+    if (selectedDbPaths.value.length === 0) return
+
+    try {
+      tags.value = await api.getAggregateTags(selectedDbPaths.value)
+    } catch (e) {
+      console.error('Failed to load aggregate tags:', e)
     }
   }
 
@@ -387,6 +476,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   return {
     // State
     projects,
+    selectedProjects,
     currentProject,
     projectConfig,
     memories,
@@ -410,16 +500,25 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
     // Computed
     currentDbPath,
+    selectedDbPaths,
+    isMultiProject,
 
     // Actions
     loadProjects,
     loadProjectConfig,
     switchProject,
+    toggleProjectSelection,
+    selectAllProjects,
+    clearProjectSelection,
+    loadAggregateData,
     loadMemories,
     loadMore,
     refresh,
     loadStats,
     loadTags,
+    loadAggregateMemories,
+    loadAggregateStats,
+    loadAggregateTags,
     loadActivities,
     loadTimeline,
     selectMemory,

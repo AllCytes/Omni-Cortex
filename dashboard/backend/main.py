@@ -58,6 +58,10 @@ from database import (
 )
 from logging_config import log_success, log_error
 from models import (
+    AggregateChatRequest,
+    AggregateMemoryRequest,
+    AggregateStatsRequest,
+    AggregateStatsResponse,
     ChatRequest,
     ChatResponse,
     ConversationSaveRequest,
@@ -346,6 +350,198 @@ async def refresh_projects():
     """Force rescan of all project directories."""
     projects = scan_projects()
     return {"count": len(projects)}
+
+
+# --- Aggregate Multi-Project Endpoints ---
+
+
+@app.post("/api/aggregate/memories")
+@rate_limit("50/minute")
+async def get_aggregate_memories(request: AggregateMemoryRequest):
+    """Get memories from multiple projects with project attribution."""
+    try:
+        all_memories = []
+        filters = request.filters or FilterParams()
+
+        for project_path in request.projects:
+            if not Path(project_path).exists():
+                continue
+
+            try:
+                memories = get_memories(project_path, filters)
+                # Add project attribution to each memory
+                for m in memories:
+                    m_dict = m.model_dump()
+                    m_dict['source_project'] = project_path
+                    # Extract project name from path
+                    project_dir = Path(project_path).parent
+                    m_dict['source_project_name'] = project_dir.name
+                    all_memories.append(m_dict)
+            except Exception as e:
+                log_error(f"/api/aggregate/memories (project: {project_path})", e)
+                continue
+
+        # Sort by last_accessed or created_at
+        all_memories.sort(
+            key=lambda x: x.get('last_accessed') or x.get('created_at') or '',
+            reverse=True
+        )
+
+        # Apply pagination
+        start = filters.offset
+        end = start + filters.limit
+        return all_memories[start:end]
+    except Exception as e:
+        log_error("/api/aggregate/memories", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/aggregate/stats", response_model=AggregateStatsResponse)
+@rate_limit("50/minute")
+async def get_aggregate_stats(request: AggregateStatsRequest):
+    """Get combined statistics across multiple projects."""
+    try:
+        total_count = 0
+        total_access = 0
+        importance_sum = 0
+        by_type = {}
+        by_status = {}
+
+        for project_path in request.projects:
+            if not Path(project_path).exists():
+                continue
+
+            try:
+                stats = get_memory_stats(project_path)
+                total_count += stats.get('total_count', 0)
+                total_access += stats.get('total_access_count', 0)
+
+                # Weighted average for importance
+                project_count = stats.get('total_count', 0)
+                project_avg_importance = stats.get('avg_importance', 0)
+                importance_sum += project_avg_importance * project_count
+
+                # Aggregate by_type
+                for type_name, count in stats.get('by_type', {}).items():
+                    by_type[type_name] = by_type.get(type_name, 0) + count
+
+                # Aggregate by_status
+                for status, count in stats.get('by_status', {}).items():
+                    by_status[status] = by_status.get(status, 0) + count
+            except Exception as e:
+                log_error(f"/api/aggregate/stats (project: {project_path})", e)
+                continue
+
+        return AggregateStatsResponse(
+            total_count=total_count,
+            total_access_count=total_access,
+            avg_importance=round(importance_sum / total_count, 1) if total_count > 0 else 0,
+            by_type=by_type,
+            by_status=by_status,
+            project_count=len(request.projects),
+        )
+    except Exception as e:
+        log_error("/api/aggregate/stats", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/aggregate/tags")
+@rate_limit("50/minute")
+async def get_aggregate_tags(request: AggregateStatsRequest):
+    """Get combined tags across multiple projects."""
+    try:
+        tag_counts = {}
+
+        for project_path in request.projects:
+            if not Path(project_path).exists():
+                continue
+
+            try:
+                tags = get_all_tags(project_path)
+                for tag in tags:
+                    tag_name = tag['name']
+                    tag_counts[tag_name] = tag_counts.get(tag_name, 0) + tag['count']
+            except Exception as e:
+                log_error(f"/api/aggregate/tags (project: {project_path})", e)
+                continue
+
+        # Return sorted by count
+        return sorted(
+            [{'name': k, 'count': v} for k, v in tag_counts.items()],
+            key=lambda x: x['count'],
+            reverse=True
+        )
+    except Exception as e:
+        log_error("/api/aggregate/tags", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/aggregate/chat", response_model=ChatResponse)
+@rate_limit("10/minute")
+async def chat_across_projects(request: AggregateChatRequest):
+    """Ask AI about memories across multiple projects."""
+    try:
+        if not chat_service.is_available():
+            raise HTTPException(
+                status_code=503,
+                detail="Chat service not available. Set GEMINI_API_KEY environment variable."
+            )
+
+        all_sources = []
+
+        # Gather relevant memories from each project
+        for project_path in request.projects:
+            if not Path(project_path).exists():
+                continue
+
+            try:
+                memories = search_memories(
+                    project_path,
+                    request.question,
+                    limit=request.max_memories_per_project
+                )
+
+                for m in memories:
+                    project_dir = Path(project_path).parent
+                    source = {
+                        'id': m.id,
+                        'type': m.memory_type,
+                        'content_preview': m.content[:200],
+                        'tags': m.tags,
+                        'project_path': project_path,
+                        'project_name': project_dir.name,
+                    }
+                    all_sources.append(source)
+            except Exception as e:
+                log_error(f"/api/aggregate/chat (project: {project_path})", e)
+                continue
+
+        if not all_sources:
+            return ChatResponse(
+                answer="No relevant memories found across the selected projects.",
+                sources=[],
+            )
+
+        # Build context with project attribution
+        context = "\n\n".join([
+            f"[From: {s['project_name']}] {s['content_preview']}"
+            for s in all_sources
+        ])
+
+        # Query AI with attributed context
+        answer = await chat_service.generate_response(request.question, context)
+
+        log_success("/api/aggregate/chat", projects=len(request.projects), sources=len(all_sources))
+
+        return ChatResponse(
+            answer=answer,
+            sources=[ChatSource(**s) for s in all_sources],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/aggregate/chat", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/memories")

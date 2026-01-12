@@ -164,6 +164,8 @@ export interface ChatSource {
   type: string
   content_preview: string
   tags: string[]
+  project_path?: string
+  project_name?: string
 }
 
 export interface ChatResponse {
@@ -683,4 +685,74 @@ export function createDefaultImageRequest(preset: ImagePreset = 'custom'): Singl
     aspect_ratio: presetDefaults[preset],
     image_size: '2K'
   }
+}
+
+// --- Aggregate Multi-Project API ---
+
+export interface AggregateMemory extends Memory {
+  source_project: string
+  source_project_name: string
+}
+
+export interface AggregateStats extends MemoryStats {
+  project_count: number
+}
+
+export async function getAggregateMemories(
+  projectPaths: string[],
+  filters: Partial<FilterState> = {},
+  limit = 50,
+  offset = 0
+): Promise<AggregateMemory[]> {
+  const response = await api.post<Record<string, unknown>[]>(
+    '/aggregate/memories',
+    {
+      projects: projectPaths,
+      filters: {
+        ...filters,
+        limit,
+        offset,
+      },
+    }
+  )
+  return response.data.map(m => ({
+    ...normalizeMemory(m),
+    source_project: m.source_project as string,
+    source_project_name: m.source_project_name as string,
+  })) as AggregateMemory[]
+}
+
+export async function getAggregateStats(
+  projectPaths: string[]
+): Promise<AggregateStats> {
+  const response = await api.post<AggregateStats>('/aggregate/stats', {
+    projects: projectPaths,
+  })
+  return response.data
+}
+
+export async function getAggregateTags(
+  projectPaths: string[]
+): Promise<Array<{ name: string; count: number }>> {
+  const response = await api.post<Array<{ name: string; count: number }>>('/aggregate/tags', {
+    projects: projectPaths,
+  })
+  return response.data
+}
+
+export async function askAcrossProjects(
+  projectPaths: string[],
+  question: string,
+  maxMemoriesPerProject = 5
+): Promise<ChatResponse> {
+  const response = await api.post<ChatResponse>(
+    '/aggregate/chat',
+    {
+      projects: projectPaths,
+      question,
+      max_memories_per_project: maxMemoriesPerProject,
+    },
+    { timeout: 120000 }
+  )
+  return response.data
 }

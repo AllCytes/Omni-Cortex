@@ -3,8 +3,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { useTheme } from '@/composables/useTheme'
 import { useElapsedTime } from '@/composables/useElapsedTime'
-import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, Download, HelpCircle, Settings } from 'lucide-vue-next'
-import ProjectSwitcher from './ProjectSwitcher.vue'
+import { Search, Filter, Wifi, WifiOff, Database, Sun, Moon, Monitor, Download, HelpCircle, Settings, Layers } from 'lucide-vue-next'
+import MultiProjectSelector from './MultiProjectSelector.vue'
 import ExportPanel from './ExportPanel.vue'
 import HelpModal from './HelpModal.vue'
 import ProjectManagementModal from './ProjectManagementModal.vue'
@@ -85,20 +85,29 @@ onUnmounted(() => {
           <h1 class="text-xl font-bold">Omni-Cortex</h1>
         </div>
 
-        <!-- Project Switcher -->
+        <!-- Multi-Project Selector -->
         <div class="project-switcher relative">
           <button
             @click="showProjectSwitcher = !showProjectSwitcher"
-            class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            :class="[
+              'flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors',
+              store.isMultiProject
+                ? 'bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30'
+                : 'bg-gray-100 dark:bg-gray-700'
+            ]"
           >
+            <Layers v-if="store.isMultiProject" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
             <span class="font-medium truncate max-w-[200px]">
-              {{ store.currentProject?.name ?? 'Select Project' }}
+              {{ store.isMultiProject
+                ? `${store.selectedProjects.length} Projects`
+                : (store.currentProject?.name ?? 'Select Project')
+              }}
             </span>
             <span class="text-sm text-gray-500 dark:text-gray-400">
               ({{ totalMemories }} memories)
             </span>
           </button>
-          <ProjectSwitcher
+          <MultiProjectSelector
             v-if="showProjectSwitcher"
             @close="showProjectSwitcher = false"
             @openManagement="openProjectManagement"

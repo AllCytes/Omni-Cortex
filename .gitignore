@@ -161,3 +161,6 @@ memories.json
 specs/omni-cortex-adw-system.md
 nul
 *.bak
+
+# Claude Code temporary files
+tmpclaude-*-cwd

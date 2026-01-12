@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { TYPE_COLORS } from '@/types'
-import { Database, Tag, TrendingUp, Eye } from 'lucide-vue-next'
+import { Database, Tag, TrendingUp, Eye, Layers } from 'lucide-vue-next'
 import ActivityHeatmap from '@/components/charts/ActivityHeatmap.vue'
 import ToolUsageChart from '@/components/charts/ToolUsageChart.vue'
 import MemoryGrowthChart from '@/components/charts/MemoryGrowthChart.vue'
@@ -54,6 +54,28 @@ function getStatusColor(status: string): string {
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Multi-Project Indicator -->
+    <div
+      v-if="store.isMultiProject"
+      class="lg:col-span-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800"
+    >
+      <div class="flex items-center gap-2 mb-2">
+        <Layers class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <span class="font-semibold text-blue-900 dark:text-blue-100">
+          Viewing {{ store.selectedProjects.length }} Projects (Combined)
+        </span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <span
+          v-for="project in store.selectedProjects"
+          :key="project.db_path"
+          class="px-3 py-1 bg-white dark:bg-gray-800 rounded-full text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm"
+        >
+          {{ project.display_name || project.name }}
+        </span>
+      </div>
+    </div>
+
     <!-- Overview Card -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">

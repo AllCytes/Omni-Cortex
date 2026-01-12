@@ -70,6 +70,53 @@ class MemoryStats(BaseModel):
     tags: list[dict[str, int | str]]
 
 
+class FilterParams(BaseModel):
+    """Query filter parameters."""
+
+    memory_type: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[list[str]] = None
+    search: Optional[str] = None
+    min_importance: Optional[int] = None
+    max_importance: Optional[int] = None
+    sort_by: str = "last_accessed"
+    sort_order: str = "desc"
+    limit: int = 50
+    offset: int = 0
+
+
+class AggregateMemoryRequest(BaseModel):
+    """Request for aggregate memory data across projects."""
+
+    projects: list[str] = Field(..., description="List of project db paths")
+    filters: Optional[FilterParams] = None
+
+
+class AggregateStatsRequest(BaseModel):
+    """Request for aggregate statistics."""
+
+    projects: list[str] = Field(..., description="List of project db paths")
+
+
+class AggregateStatsResponse(BaseModel):
+    """Aggregate statistics across multiple projects."""
+
+    total_count: int
+    total_access_count: int
+    avg_importance: float
+    by_type: dict[str, int]
+    by_status: dict[str, int]
+    project_count: int
+
+
+class AggregateChatRequest(BaseModel):
+    """Request for chat across multiple projects."""
+
+    projects: list[str] = Field(..., description="List of project db paths")
+    question: str = Field(..., min_length=1, max_length=2000)
+    max_memories_per_project: int = Field(default=5, ge=1, le=20)
+
+
 class Activity(BaseModel):
     """Activity log record."""
 
@@ -111,21 +158,6 @@ class TimelineEntry(BaseModel):
     timestamp: datetime
     entry_type: str  # "memory" or "activity"
     data: dict
-
-
-class FilterParams(BaseModel):
-    """Query filter parameters."""
-
-    memory_type: Optional[str] = None
-    status: Optional[str] = None
-    tags: Optional[list[str]] = None
-    search: Optional[str] = None
-    min_importance: Optional[int] = None
-    max_importance: Optional[int] = None
-    sort_by: str = "last_accessed"
-    sort_order: str = "desc"
-    limit: int = 50
-    offset: int = 0
 
 
 class MemoryCreateRequest(BaseModel):
@@ -173,6 +205,8 @@ class ChatSource(BaseModel):
     type: str
     content_preview: str
     tags: list[str]
+    project_path: Optional[str] = None
+    project_name: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
