@@ -279,16 +279,66 @@ def main():
         input_data = json.loads(raw_input)
 
         # Extract data from hook input
+        # Note: Claude Code uses 'tool_response' not 'tool_output'
         tool_name = input_data.get("tool_name")
         tool_input = input_data.get("tool_input", {})
-        tool_output = input_data.get("tool_output", {})
+        tool_response = input_data.get("tool_response", {})  # Correct field name
         agent_id = input_data.get("agent_id")
 
-        # Determine success/error
-        is_error = input_data.get("is_error", False)
+        # Determine success/error from response content
+        # Claude Code doesn't send 'is_error' - we must detect from response
+        is_error = False
         error_message = None
-        if is_error and isinstance(tool_output, dict):
-            error_message = tool_output.get("error") or tool_output.get("message")
+
+        if isinstance(tool_response, dict):
+            # Check for explicit error field
+            if "error" in tool_response:
+                is_error = True
+                error_message = str(tool_response.get("error", ""))[:500]
+
+            # For Bash: check stderr or error patterns in stdout
+            elif tool_name == "Bash":
+                stderr = tool_response.get("stderr", "")
+                stdout = tool_response.get("stdout", "")
+
+                # Check stderr for content (excluding common non-errors)
+                if stderr and stderr.strip():
+                    # Filter out common non-error stderr output
+                    stderr_lower = stderr.lower()
+                    non_error_patterns = ["warning:", "note:", "info:"]
+                    if not any(p in stderr_lower for p in non_error_patterns):
+                        is_error = True
+                        error_message = stderr[:500]
+
+                # Check stdout for common error patterns
+                if not is_error and stdout:
+                    error_patterns = [
+                        "command not found",
+                        "No such file or directory",
+                        "Permission denied",
+                        "fatal:",
+                        "error:",
+                        "Error:",
+                        "FAILED",
+                        "Cannot find",
+                        "not recognized",
+                        "Exit code 1",
+                    ]
+                    stdout_check = stdout[:1000]  # Check first 1000 chars
+                    for pattern in error_patterns:
+                        if pattern in stdout_check:
+                            is_error = True
+                            error_message = f"Error pattern detected: {pattern}"
+                            break
+
+            # For Read: check for file errors
+            elif tool_name == "Read":
+                if "error" in str(tool_response).lower():
+                    is_error = True
+                    error_message = "File read error"
+
+        # Legacy fallback: also check tool_output for backwards compatibility
+        tool_output = tool_response if tool_response else input_data.get("tool_output", {})
 
         # Skip logging our own tools to prevent recursion
         # MCP tools are named like "mcp__omni-cortex__cortex_remember"
@@ -310,7 +360,7 @@ def main():
 
         # Redact sensitive fields before logging
         safe_input = redact_sensitive_fields(tool_input) if isinstance(tool_input, dict) else tool_input
-        safe_output = redact_sensitive_fields(tool_output) if isinstance(tool_output, dict) else tool_output
+        safe_output = redact_sensitive_fields(tool_response) if isinstance(tool_response, dict) else tool_response
 
         # Extract command analytics
         skill_name = None

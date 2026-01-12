@@ -1002,7 +1002,7 @@ wheels = [
 
 [[package]]
 name = "omni-cortex"
-version = "1.11.0"
+version = "1.11.2"
 source = { editable = "." }
 dependencies = [
     { name = "claude-agent-sdk" },
