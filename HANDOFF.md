@@ -7,7 +7,7 @@
 
 ---
 
-## Current Status: v1.11.0 VERIFIED WORKING ✅ (Published to PyPI)
+## Current Status: v1.11.2 VERIFIED WORKING ✅ (Published to PyPI)
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
@@ -96,7 +96,18 @@ omni-cortex-setup
 - [x] Code review for security
 - [x] Performance profiling (test_performance.py with 6 benchmarks)
 
-## Recently Completed (Jan 12, 2026 session - v1.11.0)
+## Recently Completed (Jan 12, 2026 session - v1.11.2)
+
+### Dashboard Global Index Duplication Warning (v1.11.2)
+- [x] Added duplication warning banner when Global Index + individual projects are selected
+- [x] Shows estimated overlap count with amber/yellow styling
+- [x] Provides quick action buttons: "View Global Only" and "View Projects Only"
+- [x] Dismissible with X button, reappears on selection changes
+- [x] New component: `DuplicationWarningBanner.vue`
+- [x] Added store actions: `selectGlobalOnly()` and `selectProjectsOnly()`
+- [x] Smooth Vue transitions for banner appearance/disappearance
+
+### Dashboard Multi-Project Selector Fixes (v1.11.0)
 
 ### Dashboard Multi-Project Selector Fixes
 - [x] Fixed click-to-toggle behavior - dropdown now properly opens/closes on trigger click
@@ -171,12 +182,12 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.11.0 - 66 tests passing, 18 tools, all phases complete.
+Status: v1.11.2 - 66 tests passing, 18 tools, all phases complete.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
 
-Recent updates:
-- Dashboard multi-project selector bugs fixed
-- ADW enhancements with port cleanup utility
+Recent updates (v1.11.2):
+- Dashboard duplication warning banner for Global Index overlap
+- Improved UX for multi-project memory viewing
 - All changes released to PyPI and GitHub
 
 All planned features complete. Optional future work:
