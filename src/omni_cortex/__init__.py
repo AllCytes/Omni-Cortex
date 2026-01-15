@@ -1,3 +1,3 @@
 """Omni Cortex MCP - Universal Memory System for Claude Code."""
 
-__version__ = "1.12.1"
+__version__ = "1.13.0"
