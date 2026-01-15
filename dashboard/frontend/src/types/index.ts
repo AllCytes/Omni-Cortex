@@ -209,3 +209,91 @@ export const TYPE_BORDER_COLORS: Record<string, string> = {
   api: 'border-l-type-api',
   other: 'border-l-type-other',
 }
+
+// === Style Tab Types ===
+
+// User message tracking types
+export interface UserMessage {
+  id: string
+  content: string
+  tone: string | null
+  word_count: number
+  char_count: number
+  created_at: string
+  session_id: string | null
+}
+
+export interface UserMessageFilters {
+  tone?: string
+  search?: string
+  min_word_count?: number
+  max_word_count?: number
+  since?: string
+  until?: string
+}
+
+export interface UserMessagesResponse {
+  messages: UserMessage[]
+  total_count: number
+  has_more: boolean
+}
+
+// Style profile types
+export interface StyleProfile {
+  total_messages: number
+  avg_word_count: number
+  avg_char_count: number
+  tone_distribution: Record<string, number>
+  vocabulary_richness: number
+  common_phrases: string[]
+  writing_patterns: {
+    avg_sentence_length: number
+    question_frequency: number
+    exclamation_frequency: number
+    formality_score: number
+  }
+}
+
+export interface StyleSamples {
+  professional: string[]
+  casual: string[]
+  technical: string[]
+  creative: string[]
+}
+
+// Tone type constants
+export const TONE_TYPES = [
+  'professional',
+  'casual',
+  'technical',
+  'creative',
+  'formal',
+  'friendly',
+  'urgent',
+  'neutral',
+] as const
+
+export type ToneType = typeof TONE_TYPES[number]
+
+// Tone color mapping for UI
+export const TONE_COLORS: Record<string, string> = {
+  professional: 'bg-blue-500',
+  casual: 'bg-green-500',
+  technical: 'bg-purple-500',
+  creative: 'bg-pink-500',
+  formal: 'bg-slate-500',
+  friendly: 'bg-amber-500',
+  urgent: 'bg-red-500',
+  neutral: 'bg-gray-500',
+}
+
+export const TONE_TEXT_COLORS: Record<string, string> = {
+  professional: 'text-blue-500',
+  casual: 'text-green-500',
+  technical: 'text-purple-500',
+  creative: 'text-pink-500',
+  formal: 'text-slate-500',
+  friendly: 'text-amber-500',
+  urgent: 'text-red-500',
+  neutral: 'text-gray-500',
+}
