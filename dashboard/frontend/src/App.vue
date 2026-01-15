@@ -14,6 +14,7 @@ import ChatPanel from '@/components/ChatPanel.vue'
 import SessionContextViewer from '@/components/SessionContextViewer.vue'
 import FreshnessReviewPanel from '@/components/FreshnessReviewPanel.vue'
 import RelationshipGraph from '@/components/RelationshipGraph.vue'
+import StyleTab from '@/components/StyleTab.vue'
 import OnboardingOverlay from '@/components/OnboardingOverlay.vue'
 import QuickCaptureModal from '@/components/QuickCaptureModal.vue'
 import { Plus, Check } from 'lucide-vue-next'
@@ -24,7 +25,7 @@ const { connect } = useWebSocket()
 useKeyboardShortcuts()
 
 const showFilters = ref(true)
-const activeTab = ref<'memories' | 'activity' | 'stats' | 'review' | 'graph' | 'chat'>('memories')
+const activeTab = ref<'memories' | 'activity' | 'stats' | 'style' | 'review' | 'graph' | 'chat'>('memories')
 const showQuickCapture = ref(false)
 const toast = ref({ show: false, message: '' })
 
@@ -114,6 +115,17 @@ function handleQuickCaptureSuccess(memory: { id: string; content: string }) {
           Statistics
         </button>
         <button
+          @click="activeTab = 'style'"
+          :class="[
+            'px-4 py-2 rounded-lg font-medium transition-colors',
+            activeTab === 'style'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+          ]"
+        >
+          Style
+        </button>
+        <button
           @click="activeTab = 'review'"
           :class="[
             'px-4 py-2 rounded-lg font-medium transition-colors',
@@ -180,6 +192,11 @@ function handleQuickCaptureSuccess(memory: { id: string; content: string }) {
       <!-- Stats Tab -->
       <div v-else-if="activeTab === 'stats'">
         <StatsPanel />
+      </div>
+
+      <!-- Style Tab -->
+      <div v-else-if="activeTab === 'style'" class="max-w-6xl mx-auto">
+        <StyleTab />
       </div>
 
       <!-- Review Tab -->

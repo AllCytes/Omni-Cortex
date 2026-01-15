@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Project, Memory, MemoryStats, MemoryUpdate, Activity, Session, TimelineEntry, FilterState, ProjectConfig, UserMessage, UserMessageFilters, UserMessagesResponse, StyleProfile, StyleSamples } from '@/types'
+import type { Project, Memory, MemoryStats, MemoryUpdate, Activity, Session, TimelineEntry, FilterState, ProjectConfig, UserMessageFilters, UserMessagesResponse, StyleProfile, StyleSamples } from '@/types'
 
 const api = axios.create({
   baseURL: '/api',

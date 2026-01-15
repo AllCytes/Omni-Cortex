@@ -2,14 +2,15 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { getUserMessages, deleteUserMessage } from '@/services/api'
-import type { UserMessage, UserMessageFilters } from '@/types'
+import type { UserMessage } from '@/types'
 import { TONE_COLORS } from '@/types'
-import { Search, Trash2, ChevronDown, ChevronUp, HelpCircle, Code, Terminal, Filter } from 'lucide-vue-next'
+import { Search, Trash2, ChevronDown, ChevronUp, Filter, RefreshCw } from 'lucide-vue-next'
 import LiveElapsedTime from '@/components/LiveElapsedTime.vue'
 
 const store = useDashboardStore()
 const messages = ref<UserMessage[]>([])
-const total = ref(0)
+const totalCount = ref(0)
+const hasMore = ref(false)
 const loading = ref(false)
 const page = ref(1)
 const pageSize = 20
@@ -21,31 +22,39 @@ const showFilters = ref(false)
 const currentProject = computed(() => store.currentProject)
 
 async function loadMessages() {
-  if (!currentProject.value) return
+  if (!currentProject.value?.db_path) return
 
   loading.value = true
   try {
-    const result = await getUserMessages(currentProject.value, {
-      limit: pageSize,
-      offset: (page.value - 1) * pageSize,
-      search: searchQuery.value || undefined,
-      tone: selectedTone.value || undefined,
-    })
+    const result = await getUserMessages(
+      currentProject.value.db_path,
+      {
+        search: searchQuery.value || undefined,
+        tone: selectedTone.value || undefined,
+      },
+      pageSize,
+      (page.value - 1) * pageSize
+    )
     messages.value = result.messages
-    total.value = result.total
+    totalCount.value = result.total_count
+    hasMore.value = result.has_more
   } catch (e) {
     console.error('Failed to load messages:', e)
+    // Set empty state on error
+    messages.value = []
+    totalCount.value = 0
+    hasMore.value = false
   } finally {
     loading.value = false
   }
 }
 
 async function handleDelete(messageId: string) {
-  if (!currentProject.value) return
+  if (!currentProject.value?.db_path) return
   if (!confirm('Delete this message?')) return
 
   try {
-    await deleteUserMessage(currentProject.value, messageId)
+    await deleteUserMessage(currentProject.value.db_path, messageId)
     await loadMessages()
   } catch (e) {
     console.error('Failed to delete message:', e)
@@ -62,7 +71,7 @@ function truncate(text: string, length: number = 80): string {
 }
 
 // Pagination
-const totalPages = computed(() => Math.ceil(total.value / pageSize))
+const totalPages = computed(() => Math.ceil(totalCount.value / pageSize))
 
 function prevPage() {
   if (page.value > 1) page.value--
@@ -70,6 +79,12 @@ function prevPage() {
 
 function nextPage() {
   if (page.value < totalPages.value) page.value++
+}
+
+// Get tone badge class
+function getToneBadgeClass(tone: string | null): string {
+  if (!tone) return 'bg-gray-200 dark:bg-gray-600'
+  return TONE_COLORS[tone] || 'bg-gray-200 dark:bg-gray-600'
 }
 
 // Watch for filter changes
@@ -93,7 +108,17 @@ onMounted(() => {
     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold">Message History</h3>
-        <span class="text-sm text-gray-500">{{ total }} messages</span>
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-500">{{ totalCount }} messages</span>
+          <button
+            @click="loadMessages"
+            :disabled="loading"
+            class="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            title="Refresh messages"
+          >
+            <RefreshCw :class="['w-4 h-4 text-gray-500', { 'animate-spin': loading }]" />
+          </button>
+        </div>
       </div>
 
       <!-- Search & Filter Bar -->
@@ -123,7 +148,7 @@ onMounted(() => {
       <div v-if="showFilters" class="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
         <div class="flex flex-wrap gap-2">
           <button
-            v-for="tone in ['direct', 'polite', 'technical', 'inquisitive', 'casual', 'urgent']"
+            v-for="tone in ['professional', 'casual', 'technical', 'creative', 'formal', 'friendly', 'urgent', 'neutral']"
             :key="tone"
             @click="selectedTone = selectedTone === tone ? null : tone"
             :class="[
@@ -147,8 +172,8 @@ onMounted(() => {
             <th class="px-4 py-3 text-left font-medium">Time</th>
             <th class="px-4 py-3 text-left font-medium">Message</th>
             <th class="px-4 py-3 text-center font-medium">Words</th>
+            <th class="px-4 py-3 text-center font-medium">Chars</th>
             <th class="px-4 py-3 text-left font-medium">Tone</th>
-            <th class="px-4 py-3 text-center font-medium">Flags</th>
             <th class="px-4 py-3 text-center font-medium">Actions</th>
           </tr>
         </thead>
@@ -160,7 +185,7 @@ onMounted(() => {
               @click="toggleExpand(msg.id)"
             >
               <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                <LiveElapsedTime :timestamp="msg.timestamp" />
+                <LiveElapsedTime :timestamp="msg.created_at" />
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
@@ -172,35 +197,15 @@ onMounted(() => {
                 </div>
               </td>
               <td class="px-4 py-3 text-center text-sm">{{ msg.word_count }}</td>
+              <td class="px-4 py-3 text-center text-sm text-gray-500">{{ msg.char_count }}</td>
               <td class="px-4 py-3">
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="tone in msg.tone_indicators"
-                    :key="tone"
-                    :class="['px-2 py-0.5 rounded-full text-xs capitalize', TONE_COLORS[tone] || 'bg-gray-200 dark:bg-gray-600']"
-                  >
-                    {{ tone }}
-                  </span>
-                </div>
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex items-center justify-center gap-2">
-                  <HelpCircle
-                    v-if="msg.has_questions"
-                    class="w-4 h-4 text-amber-500"
-                    title="Contains questions"
-                  />
-                  <Code
-                    v-if="msg.has_code_blocks"
-                    class="w-4 h-4 text-blue-500"
-                    title="Contains code"
-                  />
-                  <Terminal
-                    v-if="msg.has_commands"
-                    class="w-4 h-4 text-green-500"
-                    title="Slash command"
-                  />
-                </div>
+                <span
+                  v-if="msg.tone"
+                  :class="['px-2 py-0.5 rounded-full text-xs capitalize text-white', getToneBadgeClass(msg.tone)]"
+                >
+                  {{ msg.tone }}
+                </span>
+                <span v-else class="text-gray-400 text-xs">-</span>
               </td>
               <td class="px-4 py-3 text-center">
                 <button
@@ -219,9 +224,19 @@ onMounted(() => {
                 <div class="text-sm whitespace-pre-wrap font-mono bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                   {{ msg.content }}
                 </div>
+                <div class="mt-2 text-xs text-gray-500 flex gap-4">
+                  <span>Session: {{ msg.session_id || 'N/A' }}</span>
+                </div>
               </td>
             </tr>
           </template>
+
+          <!-- Loading State -->
+          <tr v-if="loading && messages.length === 0">
+            <td colspan="6" class="px-4 py-8 text-center">
+              <RefreshCw class="w-6 h-6 animate-spin mx-auto text-gray-400" />
+            </td>
+          </tr>
 
           <!-- Empty State -->
           <tr v-if="!loading && messages.length === 0">
