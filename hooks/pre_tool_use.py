@@ -29,6 +29,68 @@ from pathlib import Path
 from session_utils import get_or_create_session
 
 
+# === Tool Timing Management ===
+# Store tool start timestamps for duration calculation in post_tool_use
+
+def get_timing_file_path() -> Path:
+    """Get the path to the tool timing file."""
+    project_path = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    return Path(project_path) / ".omni-cortex" / "tool_timing.json"
+
+
+def load_timing_data() -> dict:
+    """Load current timing data from file."""
+    timing_file = get_timing_file_path()
+    if not timing_file.exists():
+        return {}
+    try:
+        with open(timing_file, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
+def save_timing_data(data: dict) -> None:
+    """Save timing data to file."""
+    timing_file = get_timing_file_path()
+    timing_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_file, "w") as f:
+        json.dump(data, f)
+
+
+def record_tool_start(tool_name: str, activity_id: str, agent_id: str = None) -> None:
+    """Record the start time for a tool execution.
+
+    Args:
+        tool_name: Name of the tool being executed
+        activity_id: Unique activity ID for this tool call
+        agent_id: Optional agent ID
+    """
+    timing_data = load_timing_data()
+
+    # Use activity_id as key (unique per tool call)
+    # Also store by tool_name for simpler matching in post_tool_use
+    key = f"{tool_name}_{agent_id or 'main'}"
+
+    timing_data[key] = {
+        "activity_id": activity_id,
+        "tool_name": tool_name,
+        "agent_id": agent_id,
+        "start_time_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
+        "start_time_iso": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Clean up old entries (older than 1 hour) to prevent file bloat
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    one_hour_ms = 60 * 60 * 1000
+    timing_data = {
+        k: v for k, v in timing_data.items()
+        if now_ms - v.get("start_time_ms", 0) < one_hour_ms
+    }
+
+    save_timing_data(timing_data)
+
+
 # Patterns for sensitive field names that should be redacted
 SENSITIVE_FIELD_PATTERNS = [
     r'(?i)(api[_-]?key|apikey)',
@@ -172,6 +234,12 @@ def main():
         # Redact sensitive fields before logging
         safe_input = redact_sensitive_fields(tool_input) if isinstance(tool_input, dict) else tool_input
 
+        # Generate activity ID
+        activity_id = generate_id()
+
+        # Record tool start time for duration calculation
+        record_tool_start(tool_name, activity_id, agent_id)
+
         # Insert activity record
         cursor = conn.cursor()
         cursor.execute(
@@ -182,7 +250,7 @@ def main():
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                generate_id(),
+                activity_id,
                 session_id,
                 agent_id,
                 datetime.now(timezone.utc).isoformat(),

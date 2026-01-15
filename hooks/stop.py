@@ -70,10 +70,24 @@ def main():
             conn.close()
             return
 
-        # End the session
+        # Get session start time for duration calculation
+        cursor.execute("SELECT started_at FROM sessions WHERE id = ?", (session_id,))
+        session_row = cursor.fetchone()
+        session_duration_ms = None
+
+        if session_row and session_row["started_at"]:
+            try:
+                started_at = session_row["started_at"]
+                started_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                ended_dt = datetime.now(timezone.utc)
+                session_duration_ms = int((ended_dt - started_dt).total_seconds() * 1000)
+            except (ValueError, TypeError):
+                pass
+
+        # End the session with duration
         cursor.execute(
-            "UPDATE sessions SET ended_at = ? WHERE id = ? AND ended_at IS NULL",
-            (now, session_id),
+            "UPDATE sessions SET ended_at = ?, duration_ms = ? WHERE id = ? AND ended_at IS NULL",
+            (now, session_duration_ms, session_id),
         )
 
         # Gather session statistics
@@ -131,12 +145,28 @@ def main():
         )
         existing = cursor.fetchone()
 
+        # Calculate tool duration breakdown from activities
+        cursor.execute(
+            """
+            SELECT tool_name, SUM(duration_ms) as total_ms, COUNT(*) as cnt
+            FROM activities
+            WHERE session_id = ? AND tool_name IS NOT NULL AND duration_ms IS NOT NULL
+            GROUP BY tool_name
+            """,
+            (session_id,),
+        )
+        tool_duration_breakdown = {
+            row["tool_name"]: {"total_ms": row["total_ms"], "count": row["cnt"]}
+            for row in cursor.fetchall()
+        }
+
         if existing:
             cursor.execute(
                 """
                 UPDATE session_summaries
                 SET key_errors = ?, files_modified = ?, tools_used = ?,
-                    total_activities = ?, total_memories_created = ?
+                    total_activities = ?, total_memories_created = ?,
+                    duration_ms = ?, tool_duration_breakdown = ?
                 WHERE session_id = ?
                 """,
                 (
@@ -145,6 +175,8 @@ def main():
                     json.dumps(tools_used) if tools_used else None,
                     total_activities,
                     total_memories,
+                    session_duration_ms,
+                    json.dumps(tool_duration_breakdown) if tool_duration_breakdown else None,
                     session_id,
                 ),
             )
@@ -153,8 +185,9 @@ def main():
                 """
                 INSERT INTO session_summaries (
                     id, session_id, key_errors, files_modified, tools_used,
-                    total_activities, total_memories_created, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    total_activities, total_memories_created, created_at,
+                    duration_ms, tool_duration_breakdown
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     generate_id("sum"),
@@ -165,6 +198,8 @@ def main():
                     total_activities,
                     total_memories,
                     now,
+                    session_duration_ms,
+                    json.dumps(tool_duration_breakdown) if tool_duration_breakdown else None,
                 ),
             )
 

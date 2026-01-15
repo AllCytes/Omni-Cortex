@@ -219,6 +219,138 @@ async def get_recent_sessions_resource() -> str:
         return f"Error getting recent sessions: {e}"
 
 
+@mcp.resource("cortex://status")
+async def get_cli_status() -> str:
+    """Get current session status for CLI display.
+
+    Provides real-time status information that can be used for:
+    - Session timer display
+    - Activity counts
+    - Tool usage statistics
+    - Memory creation stats
+
+    This resource is designed to support future CLI status bar integration.
+    """
+    try:
+        import json
+        from datetime import datetime, timezone
+        conn = init_database()
+        cursor = conn.cursor()
+
+        status = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "session": None,
+            "activity_summary": {},
+            "memory_summary": {},
+            "tool_stats": {},
+        }
+
+        # Get current/most recent session
+        cursor.execute("""
+            SELECT id, started_at, ended_at, duration_ms
+            FROM sessions
+            ORDER BY started_at DESC
+            LIMIT 1
+        """)
+        row = cursor.fetchone()
+        if row:
+            session_id = row["id"]
+            started_at = row["started_at"]
+            ended_at = row["ended_at"]
+            duration_ms = row["duration_ms"]
+
+            # Calculate session duration
+            if started_at:
+                try:
+                    start_time = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                    now = datetime.now(timezone.utc)
+                    elapsed_seconds = (now - start_time).total_seconds()
+                    elapsed_minutes = int(elapsed_seconds / 60)
+                    elapsed_hours = int(elapsed_minutes / 60)
+                except Exception:
+                    elapsed_seconds = 0
+                    elapsed_minutes = 0
+                    elapsed_hours = 0
+            else:
+                elapsed_seconds = elapsed_minutes = elapsed_hours = 0
+
+            status["session"] = {
+                "id": session_id,
+                "started_at": started_at,
+                "ended_at": ended_at,
+                "is_active": ended_at is None,
+                "elapsed_seconds": int(elapsed_seconds),
+                "elapsed_minutes": elapsed_minutes,
+                "elapsed_hours": elapsed_hours,
+                "elapsed_display": f"{elapsed_hours}h {elapsed_minutes % 60}m" if elapsed_hours > 0 else f"{elapsed_minutes}m",
+                "recorded_duration_ms": duration_ms,
+            }
+
+            # Get activity count for this session
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM activities
+                WHERE session_id = ?
+            """, (session_id,))
+            activity_count = cursor.fetchone()["count"]
+
+            # Get tool breakdown for this session
+            cursor.execute("""
+                SELECT tool_name, COUNT(*) as count, SUM(duration_ms) as total_ms
+                FROM activities
+                WHERE session_id = ? AND tool_name IS NOT NULL
+                GROUP BY tool_name
+                ORDER BY count DESC
+                LIMIT 10
+            """, (session_id,))
+            tool_stats = {}
+            for tool_row in cursor.fetchall():
+                tool_stats[tool_row["tool_name"]] = {
+                    "count": tool_row["count"],
+                    "total_ms": tool_row["total_ms"],
+                }
+
+            status["activity_summary"] = {
+                "session_activity_count": activity_count,
+                "top_tools": tool_stats,
+            }
+
+            # Get memories created in this session
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM memories
+                WHERE source_session_id = ?
+            """, (session_id,))
+            memories_created = cursor.fetchone()["count"]
+
+            status["memory_summary"] = {
+                "session_memories_created": memories_created,
+            }
+
+        # Get all-time totals
+        cursor.execute("SELECT COUNT(*) FROM activities")
+        status["totals"] = {
+            "all_activities": cursor.fetchone()[0],
+        }
+        cursor.execute("SELECT COUNT(*) FROM memories")
+        status["totals"]["all_memories"] = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM sessions")
+        status["totals"]["all_sessions"] = cursor.fetchone()[0]
+
+        # Get user message count if table exists
+        try:
+            cursor.execute("SELECT COUNT(*) FROM user_messages")
+            status["totals"]["all_user_messages"] = cursor.fetchone()[0]
+        except Exception:
+            status["totals"]["all_user_messages"] = 0
+
+        return json.dumps(status, indent=2)
+
+    except Exception as e:
+        import json
+        return json.dumps({"error": str(e)})
+
+
 def main():
     """Run the MCP server."""
     mcp.run()

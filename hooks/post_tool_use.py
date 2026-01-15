@@ -24,9 +24,73 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional, Tuple
 
 # Import shared session management
 from session_utils import get_or_create_session
+
+
+# === Tool Timing Management ===
+# Read tool start timestamps and calculate duration
+
+def get_timing_file_path() -> Path:
+    """Get the path to the tool timing file."""
+    project_path = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    return Path(project_path) / ".omni-cortex" / "tool_timing.json"
+
+
+def load_timing_data() -> dict:
+    """Load current timing data from file."""
+    timing_file = get_timing_file_path()
+    if not timing_file.exists():
+        return {}
+    try:
+        with open(timing_file, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
+def save_timing_data(data: dict) -> None:
+    """Save timing data to file."""
+    timing_file = get_timing_file_path()
+    timing_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_file, "w") as f:
+        json.dump(data, f)
+
+
+def get_tool_duration(tool_name: str, agent_id: str = None) -> Tuple[Optional[int], Optional[str]]:
+    """Get the duration for a tool execution and clean up.
+
+    Args:
+        tool_name: Name of the tool that finished
+        agent_id: Optional agent ID
+
+    Returns:
+        Tuple of (duration_ms, activity_id) or (None, None) if not found
+    """
+    timing_data = load_timing_data()
+    key = f"{tool_name}_{agent_id or 'main'}"
+
+    if key not in timing_data:
+        return None, None
+
+    entry = timing_data[key]
+    start_time_ms = entry.get("start_time_ms")
+    activity_id = entry.get("activity_id")
+
+    if not start_time_ms:
+        return None, activity_id
+
+    # Calculate duration
+    end_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    duration_ms = end_time_ms - start_time_ms
+
+    # Remove the entry (tool call complete)
+    del timing_data[key]
+    save_timing_data(timing_data)
+
+    return duration_ms, activity_id
 
 
 # Patterns for sensitive field names that should be redacted
@@ -383,15 +447,18 @@ def main():
         except Exception:
             pass
 
-        # Insert activity record with analytics columns
+        # Get tool duration from pre_tool_use timing data
+        duration_ms, _ = get_tool_duration(tool_name, agent_id)
+
+        # Insert activity record with analytics columns and duration
         cursor = conn.cursor()
         cursor.execute(
             """
             INSERT INTO activities (
                 id, session_id, agent_id, timestamp, event_type,
-                tool_name, tool_input, tool_output, success, error_message, project_path,
+                tool_name, tool_input, tool_output, duration_ms, success, error_message, project_path,
                 skill_name, command_scope, mcp_server, summary, summary_detail
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 generate_id(),
@@ -402,6 +469,7 @@ def main():
                 tool_name,
                 truncate(json.dumps(safe_input, default=str)),
                 truncate(json.dumps(safe_output, default=str)),
+                duration_ms,
                 0 if is_error else 1,
                 error_message,
                 project_path,
