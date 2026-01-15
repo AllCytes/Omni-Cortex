@@ -1,13 +1,13 @@
 # Omni Cortex MCP - Session Handoff
 
-**Date:** January 12, 2026
+**Date:** January 15, 2026
 **Project:** D:\Projects\omni-cortex
 **GitHub:** https://github.com/AllCytes/Omni-Cortex
 **PyPI:** https://pypi.org/project/omni-cortex/
 
 ---
 
-## Current Status: v1.11.3 VERIFIED WORKING ✅ (Published to PyPI)
+## Current Status: v1.12.0 VERIFIED WORKING ✅ (Published to PyPI)
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
