@@ -283,3 +283,87 @@ class BatchImageGenerationResponse(BaseModel):
     success: bool
     images: list[SingleImageResponseModel] = []
     errors: list[str] = []
+
+
+# --- User Messages & Style Profile Models ---
+
+
+class UserMessage(BaseModel):
+    """User message record from the database."""
+
+    id: str
+    session_id: Optional[str] = None
+    timestamp: str
+    content: str
+    word_count: Optional[int] = None
+    char_count: Optional[int] = None
+    line_count: Optional[int] = None
+    has_code_blocks: bool = False
+    has_questions: bool = False
+    has_commands: bool = False
+    tone_indicators: list[str] = []
+    project_path: Optional[str] = None
+
+
+class UserMessageFilters(BaseModel):
+    """Query filter parameters for user messages."""
+
+    session_id: Optional[str] = None
+    search: Optional[str] = None
+    has_code_blocks: Optional[bool] = None
+    has_questions: Optional[bool] = None
+    has_commands: Optional[bool] = None
+    tone_filter: Optional[str] = None
+    sort_by: str = "timestamp"
+    sort_order: str = "desc"
+    limit: int = Field(default=50, ge=1, le=500)
+    offset: int = Field(default=0, ge=0)
+
+
+class UserMessagesResponse(BaseModel):
+    """Response containing user messages with pagination info."""
+
+    messages: list[UserMessage]
+    total_count: int
+    limit: int
+    offset: int
+
+
+class StyleSample(BaseModel):
+    """A sample message for style preview."""
+
+    id: str
+    timestamp: str
+    content_preview: str
+    word_count: Optional[int] = None
+    has_code_blocks: bool = False
+    has_questions: bool = False
+    tone_indicators: list[str] = []
+
+
+class StyleProfile(BaseModel):
+    """User style profile for aggregated style analysis."""
+
+    id: str
+    project_path: Optional[str] = None
+    total_messages: int = 0
+    avg_word_count: Optional[float] = None
+    avg_char_count: Optional[float] = None
+    common_phrases: Optional[list[str]] = None
+    vocabulary_richness: Optional[float] = None
+    formality_score: Optional[float] = None
+    question_frequency: Optional[float] = None
+    command_frequency: Optional[float] = None
+    code_block_frequency: Optional[float] = None
+    punctuation_style: Optional[dict] = None
+    greeting_patterns: Optional[list[str]] = None
+    instruction_style: Optional[dict] = None
+    sample_messages: Optional[list[str]] = None
+    created_at: str
+    updated_at: str
+
+
+class BulkDeleteRequest(BaseModel):
+    """Request body for bulk delete operations."""
+
+    message_ids: list[str] = Field(..., min_length=1, max_length=100)

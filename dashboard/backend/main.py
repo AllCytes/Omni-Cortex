@@ -33,6 +33,8 @@ from database import (
     bulk_update_memory_status,
     create_memory,
     delete_memory,
+    delete_user_message,
+    delete_user_messages_bulk,
     ensure_migrations,
     get_activities,
     get_activity_detail,
@@ -50,9 +52,13 @@ from database import (
     get_relationships,
     get_sessions,
     get_skill_usage,
+    get_style_profile,
+    get_style_samples,
     get_timeline,
     get_tool_usage,
     get_type_distribution,
+    get_user_message_count,
+    get_user_messages,
     search_memories,
     update_memory,
 )
@@ -62,20 +68,25 @@ from models import (
     AggregateMemoryRequest,
     AggregateStatsRequest,
     AggregateStatsResponse,
+    BatchImageGenerationRequest,
+    BatchImageGenerationResponse,
+    BulkDeleteRequest,
     ChatRequest,
     ChatResponse,
     ConversationSaveRequest,
     ConversationSaveResponse,
     FilterParams,
+    ImageRefineRequest,
     MemoryCreateRequest,
     MemoryUpdate,
     ProjectInfo,
     ProjectRegistration,
-    BatchImageGenerationRequest,
-    BatchImageGenerationResponse,
-    ImageRefineRequest,
     SingleImageRequestModel,
     SingleImageResponseModel,
+    StyleProfile,
+    StyleSample,
+    UserMessage,
+    UserMessagesResponse,
 )
 from project_config import (
     load_config,
@@ -1184,6 +1195,188 @@ async def clear_image_conversation(image_id: Optional[str] = None):
     """Clear image conversation history. If image_id provided, clear only that image."""
     image_service.clear_conversation(image_id)
     return {"status": "cleared", "image_id": image_id}
+
+
+# --- User Messages & Style Profile Endpoints ---
+
+
+@app.get("/api/user-messages", response_model=UserMessagesResponse)
+@rate_limit("100/minute")
+async def list_user_messages(
+    project: str = Query(..., description="Path to the database file"),
+    session_id: Optional[str] = None,
+    search: Optional[str] = None,
+    has_code_blocks: Optional[bool] = None,
+    has_questions: Optional[bool] = None,
+    has_commands: Optional[bool] = None,
+    tone_filter: Optional[str] = None,
+    sort_by: str = "timestamp",
+    sort_order: str = "desc",
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """Get user messages with filtering and pagination.
+
+    Filter options:
+    - session_id: Filter by session
+    - search: Search in message content
+    - has_code_blocks: Filter by presence of code blocks
+    - has_questions: Filter by presence of questions
+    - has_commands: Filter by slash commands
+    - tone_filter: Filter by tone indicator (polite, urgent, technical, casual, direct, inquisitive)
+    """
+    try:
+        if not Path(project).exists():
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        messages = get_user_messages(
+            project,
+            session_id=session_id,
+            search=search,
+            has_code_blocks=has_code_blocks,
+            has_questions=has_questions,
+            has_commands=has_commands,
+            tone_filter=tone_filter,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset,
+        )
+
+        total_count = get_user_message_count(project, session_id=session_id)
+
+        log_success("/api/user-messages", count=len(messages), total=total_count)
+        return UserMessagesResponse(
+            messages=[UserMessage(**m) for m in messages],
+            total_count=total_count,
+            limit=limit,
+            offset=offset,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/user-messages", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/user-messages/{message_id}")
+async def delete_single_user_message(
+    message_id: str,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Delete a single user message by ID."""
+    try:
+        if not Path(project).exists():
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        deleted = delete_user_message(project, message_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Message not found")
+
+        log_success("/api/user-messages/delete", message_id=message_id)
+        return {"message": "Message deleted", "id": message_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/user-messages/delete", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/user-messages/bulk-delete")
+async def delete_user_messages_bulk_endpoint(
+    request: BulkDeleteRequest,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Delete multiple user messages at once."""
+    try:
+        if not Path(project).exists():
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        count = delete_user_messages_bulk(project, request.message_ids)
+
+        log_success("/api/user-messages/bulk-delete", deleted_count=count)
+        return {"message": f"Deleted {count} messages", "deleted_count": count}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/user-messages/bulk-delete", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/style-profile")
+async def get_style_profile_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    project_path: Optional[str] = Query(None, description="Project-specific profile path, or None for global"),
+):
+    """Get user style profile for style analysis.
+
+    Returns aggregated style metrics including:
+    - Average word/char counts
+    - Common phrases
+    - Formality score
+    - Question/command frequencies
+    - Greeting and instruction patterns
+    """
+    try:
+        if not Path(project).exists():
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        profile = get_style_profile(project, project_path=project_path)
+
+        if not profile:
+            # Return empty profile structure if none exists
+            return {
+                "id": None,
+                "project_path": project_path,
+                "total_messages": 0,
+                "avg_word_count": None,
+                "avg_char_count": None,
+                "common_phrases": [],
+                "vocabulary_richness": None,
+                "formality_score": None,
+                "question_frequency": None,
+                "command_frequency": None,
+                "code_block_frequency": None,
+                "punctuation_style": None,
+                "greeting_patterns": [],
+                "instruction_style": None,
+                "sample_messages": [],
+                "created_at": None,
+                "updated_at": None,
+            }
+
+        log_success("/api/style-profile", has_profile=True)
+        return profile
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/style-profile", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/style-samples", response_model=list[StyleSample])
+async def get_style_samples_endpoint(
+    project: str = Query(..., description="Path to the database file"),
+    limit: int = Query(10, ge=1, le=50),
+):
+    """Get sample user messages for style analysis preview.
+
+    Returns a diverse selection of messages showcasing different writing styles,
+    including recent messages, messages with code blocks, and longer messages.
+    """
+    try:
+        if not Path(project).exists():
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        samples = get_style_samples(project, limit=limit)
+
+        log_success("/api/style-samples", count=len(samples))
+        return [StyleSample(**s) for s in samples]
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/style-samples", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # --- WebSocket Endpoint ---

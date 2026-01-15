@@ -1092,3 +1092,339 @@ def create_memory(
     conn.close()
 
     return memory_id
+
+
+# --- User Message Functions for Style Tab ---
+
+
+def get_user_messages(
+    db_path: str,
+    session_id: Optional[str] = None,
+    search: Optional[str] = None,
+    has_code_blocks: Optional[bool] = None,
+    has_questions: Optional[bool] = None,
+    has_commands: Optional[bool] = None,
+    tone_filter: Optional[str] = None,
+    sort_by: str = "timestamp",
+    sort_order: str = "desc",
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    """Get user messages with filtering, sorting, and pagination.
+
+    Args:
+        db_path: Path to database
+        session_id: Filter by session
+        search: Search in content
+        has_code_blocks: Filter messages with/without code blocks
+        has_questions: Filter messages with/without questions
+        has_commands: Filter messages with/without slash commands
+        tone_filter: Filter by tone indicator (e.g., 'polite', 'urgent', 'technical')
+        sort_by: Sort by column (timestamp, word_count, char_count)
+        sort_order: 'asc' or 'desc'
+        limit: Maximum results
+        offset: Pagination offset
+
+    Returns:
+        List of user message dictionaries
+    """
+    conn = get_connection(db_path)
+
+    # Check if user_messages table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_messages'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return []
+
+    query = "SELECT * FROM user_messages WHERE 1=1"
+    params: list = []
+
+    if session_id:
+        query += " AND session_id = ?"
+        params.append(session_id)
+
+    if search:
+        query += " AND content LIKE ?"
+        params.append(f"%{search}%")
+
+    if has_code_blocks is not None:
+        query += " AND has_code_blocks = ?"
+        params.append(1 if has_code_blocks else 0)
+
+    if has_questions is not None:
+        query += " AND has_questions = ?"
+        params.append(1 if has_questions else 0)
+
+    if has_commands is not None:
+        query += " AND has_commands = ?"
+        params.append(1 if has_commands else 0)
+
+    if tone_filter:
+        # Search within JSON array of tone_indicators
+        query += " AND tone_indicators LIKE ?"
+        params.append(f'%"{tone_filter}"%')
+
+    # Sorting
+    valid_sort_columns = ["timestamp", "word_count", "char_count", "line_count"]
+    sort_by = sort_by if sort_by in valid_sort_columns else "timestamp"
+    sort_order = "DESC" if sort_order.lower() == "desc" else "ASC"
+    query += f" ORDER BY {sort_by} {sort_order}"
+
+    # Pagination
+    query += " LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+
+    cursor = conn.execute(query, params)
+    messages = []
+
+    for row in cursor.fetchall():
+        # Parse tone_indicators from JSON
+        tone_indicators = []
+        if row["tone_indicators"]:
+            try:
+                tone_indicators = json.loads(row["tone_indicators"])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        messages.append({
+            "id": row["id"],
+            "session_id": row["session_id"],
+            "timestamp": row["timestamp"],
+            "content": row["content"],
+            "word_count": row["word_count"],
+            "char_count": row["char_count"],
+            "line_count": row["line_count"],
+            "has_code_blocks": bool(row["has_code_blocks"]),
+            "has_questions": bool(row["has_questions"]),
+            "has_commands": bool(row["has_commands"]),
+            "tone_indicators": tone_indicators,
+            "project_path": row["project_path"],
+        })
+
+    conn.close()
+    return messages
+
+
+def get_user_message_count(
+    db_path: str,
+    session_id: Optional[str] = None,
+) -> int:
+    """Get total count of user messages.
+
+    Args:
+        db_path: Path to database
+        session_id: Optional filter by session
+
+    Returns:
+        Count of user messages
+    """
+    conn = get_connection(db_path)
+
+    # Check if user_messages table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_messages'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return 0
+
+    query = "SELECT COUNT(*) FROM user_messages"
+    params = []
+
+    if session_id:
+        query += " WHERE session_id = ?"
+        params.append(session_id)
+
+    count = conn.execute(query, params).fetchone()[0]
+    conn.close()
+    return count
+
+
+def delete_user_message(db_path: str, message_id: str) -> bool:
+    """Delete a single user message.
+
+    Args:
+        db_path: Path to database
+        message_id: Message ID to delete
+
+    Returns:
+        True if deleted, False if not found
+    """
+    conn = get_write_connection(db_path)
+
+    cursor = conn.execute("DELETE FROM user_messages WHERE id = ?", (message_id,))
+    conn.commit()
+
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted
+
+
+def delete_user_messages_bulk(db_path: str, message_ids: list[str]) -> int:
+    """Delete multiple user messages.
+
+    Args:
+        db_path: Path to database
+        message_ids: List of message IDs to delete
+
+    Returns:
+        Count of messages deleted
+    """
+    if not message_ids:
+        return 0
+
+    conn = get_write_connection(db_path)
+    placeholders = ','.join('?' * len(message_ids))
+    query = f"DELETE FROM user_messages WHERE id IN ({placeholders})"
+    cursor = conn.execute(query, message_ids)
+    conn.commit()
+
+    count = cursor.rowcount
+    conn.close()
+    return count
+
+
+def get_style_profile(db_path: str, project_path: Optional[str] = None) -> Optional[dict]:
+    """Get user style profile.
+
+    Args:
+        db_path: Path to database
+        project_path: Project-specific profile, or None for global
+
+    Returns:
+        Style profile dictionary or None if not found
+    """
+    conn = get_connection(db_path)
+
+    # Check if user_style_profiles table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_style_profiles'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return None
+
+    if project_path:
+        query = "SELECT * FROM user_style_profiles WHERE project_path = ? ORDER BY updated_at DESC LIMIT 1"
+        cursor = conn.execute(query, (project_path,))
+    else:
+        query = "SELECT * FROM user_style_profiles WHERE project_path IS NULL ORDER BY updated_at DESC LIMIT 1"
+        cursor = conn.execute(query)
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    # Parse JSON fields
+    def parse_json_field(value):
+        if not value:
+            return None
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    return {
+        "id": row["id"],
+        "project_path": row["project_path"],
+        "total_messages": row["total_messages"],
+        "avg_word_count": row["avg_word_count"],
+        "avg_char_count": row["avg_char_count"],
+        "common_phrases": parse_json_field(row["common_phrases"]),
+        "vocabulary_richness": row["vocabulary_richness"],
+        "formality_score": row["formality_score"],
+        "question_frequency": row["question_frequency"],
+        "command_frequency": row["command_frequency"],
+        "code_block_frequency": row["code_block_frequency"],
+        "punctuation_style": parse_json_field(row["punctuation_style"]),
+        "greeting_patterns": parse_json_field(row["greeting_patterns"]),
+        "instruction_style": parse_json_field(row["instruction_style"]),
+        "sample_messages": parse_json_field(row["sample_messages"]),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def get_style_samples(db_path: str, limit: int = 10) -> list[dict]:
+    """Get sample user messages for style analysis preview.
+
+    Returns a diverse selection of messages showcasing different styles.
+
+    Args:
+        db_path: Path to database
+        limit: Maximum samples to return
+
+    Returns:
+        List of sample messages with style indicators
+    """
+    conn = get_connection(db_path)
+
+    # Check if user_messages table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_messages'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return []
+
+    # Get a diverse sample: some recent, some with code, some with questions
+    samples = []
+
+    # Recent messages
+    cursor = conn.execute(
+        "SELECT * FROM user_messages ORDER BY timestamp DESC LIMIT ?",
+        (limit // 3,)
+    )
+    for row in cursor.fetchall():
+        samples.append(_row_to_sample(row))
+
+    # Messages with code blocks
+    cursor = conn.execute(
+        "SELECT * FROM user_messages WHERE has_code_blocks = 1 ORDER BY timestamp DESC LIMIT ?",
+        (limit // 3,)
+    )
+    for row in cursor.fetchall():
+        sample = _row_to_sample(row)
+        if sample["id"] not in [s["id"] for s in samples]:
+            samples.append(sample)
+
+    # Longer messages (likely more substantive)
+    cursor = conn.execute(
+        "SELECT * FROM user_messages WHERE word_count > 20 ORDER BY word_count DESC LIMIT ?",
+        (limit // 3,)
+    )
+    for row in cursor.fetchall():
+        sample = _row_to_sample(row)
+        if sample["id"] not in [s["id"] for s in samples]:
+            samples.append(sample)
+
+    conn.close()
+    return samples[:limit]
+
+
+def _row_to_sample(row) -> dict:
+    """Convert a database row to a sample message dict."""
+    tone_indicators = []
+    if row["tone_indicators"]:
+        try:
+            tone_indicators = json.loads(row["tone_indicators"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return {
+        "id": row["id"],
+        "timestamp": row["timestamp"],
+        "content_preview": row["content"][:200] + "..." if len(row["content"]) > 200 else row["content"],
+        "word_count": row["word_count"],
+        "has_code_blocks": bool(row["has_code_blocks"]),
+        "has_questions": bool(row["has_questions"]),
+        "tone_indicators": tone_indicators,
+    }
