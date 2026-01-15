@@ -7,7 +7,7 @@
 
 ---
 
-## Current Status: v1.12.0 VERIFIED WORKING ✅ (Published to PyPI)
+## Current Status: v1.12.1 VERIFIED WORKING ✅ (Published to PyPI)
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
