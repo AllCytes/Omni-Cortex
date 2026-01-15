@@ -7,7 +7,7 @@
 
 ---
 
-## Current Status: v1.12.1 VERIFIED WORKING ✅ (Published to PyPI)
+## Current Status: v1.13.0 VERIFIED WORKING ✅ (Published to PyPI)
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
@@ -96,7 +96,47 @@ omni-cortex-setup
 - [x] Code review for security
 - [x] Performance profiling (test_performance.py with 6 benchmarks)
 
-## Recently Completed (Jan 12, 2026 session - v1.11.2)
+## Recently Completed
+
+### v1.13.0 (Jan 15, 2026) - Response Composer Feature
+**Major new feature** enabling AI-powered response composition using personal communication style and domain knowledge.
+
+**New Dashboard Features:**
+- **Response Composer UI** - Third mode (Chat, Compose, Image) in dashboard
+  - Platform-aware context selector (Skool posts, DMs, emails, comments)
+  - Response templates (answer, guide, redirect, acknowledge)
+  - Tone adjustment slider
+  - Sample message display
+  - Copy to clipboard functionality
+- **Enhanced Style Mode** - Strict style adherence with concrete examples
+  - Uses actual user message samples as style references
+  - Mandatory guidelines for matching user's voice
+  - Support for both camelCase and snake_case API formats
+
+**Backend Enhancements:**
+- New `/compose-response` endpoint for generating style-matched responses
+- Style markers database table and CRUD operations (`/style/markers/*`)
+- Platform-specific formatting guidance
+- Response template system with structural patterns
+- Backward-compatible style profile format support
+
+**Files Changed:**
+- `dashboard/backend/chat_service.py` - Enhanced style builder, compose prompt generator
+- `dashboard/backend/database.py` - Style markers table and operations
+- `dashboard/backend/main.py` - Compose endpoint and markers CRUD
+- `dashboard/backend/models.py` - StyleMarker, ComposeRequest/Response models
+- `dashboard/frontend/src/components/ChatPanel.vue` - Compose mode integration
+- `dashboard/frontend/src/components/ResponseComposer.vue` - New component
+- `dashboard/frontend/src/services/api.ts` - composeResponse API call
+- `dashboard/frontend/src/types/index.ts` - Type definitions
+
+**Documentation:**
+- `adws/adw_build_validate_release.py` - Release workflow automation
+- `specs/done/response-composer-feature.md` - Complete feature spec
+- `specs/done/ask-ai-style-integration.md` - Style integration spec
+- `docs/retrospectives/retrospective-2026-01-15-001-style-tab-orchestration.md`
+
+### v1.12.1 (Jan 14, 2026)
 
 ### Dashboard Global Index Duplication Warning (v1.11.2)
 - [x] Added duplication warning banner when Global Index + individual projects are selected
