@@ -294,7 +294,8 @@ class UserMessage(BaseModel):
 
     id: str
     session_id: Optional[str] = None
-    timestamp: str
+    timestamp: Optional[str] = None  # Backward compatibility
+    created_at: Optional[str] = None  # Frontend expects created_at
     content: str
     word_count: Optional[int] = None
     char_count: Optional[int] = None
@@ -302,6 +303,7 @@ class UserMessage(BaseModel):
     has_code_blocks: bool = False
     has_questions: bool = False
     has_commands: bool = False
+    tone: Optional[str] = None  # Primary tone for frontend
     tone_indicators: list[str] = []
     project_path: Optional[str] = None
 
@@ -328,6 +330,7 @@ class UserMessagesResponse(BaseModel):
     total_count: int
     limit: int
     offset: int
+    has_more: bool = False  # Whether more results are available
 
 
 class StyleSample(BaseModel):
@@ -368,3 +371,30 @@ class BulkDeleteRequest(BaseModel):
     """Request body for bulk delete operations."""
 
     message_ids: list[str] = Field(..., min_length=1, max_length=100)
+
+
+# --- Response Composer Models ---
+
+
+class ComposeRequest(BaseModel):
+    """Request for composing a response in user's style."""
+
+    incoming_message: str = Field(..., min_length=1, max_length=5000)
+    context_type: str = Field(default="general")  # skool_post, dm, email, comment, general
+    template: Optional[str] = None  # answer, guide, redirect, acknowledge
+    tone_level: int = Field(default=50, ge=0, le=100)  # 0=casual, 100=professional
+    include_memories: bool = Field(default=True)
+
+
+class ComposeResponse(BaseModel):
+    """Response from compose endpoint."""
+
+    id: str
+    response: str
+    sources: list[ChatSource]
+    style_applied: bool
+    tone_level: int
+    template_used: Optional[str]
+    incoming_message: str
+    context_type: str
+    created_at: str

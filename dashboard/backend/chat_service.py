@@ -45,31 +45,51 @@ def is_available() -> bool:
 def build_style_context_prompt(style_profile: dict) -> str:
     """Build a prompt section describing user's communication style."""
 
-    tone_dist = style_profile.get("tone_distribution", {})
+    # Handle both camelCase (new format) and snake_case (old format)
+    tone_dist = style_profile.get("toneDistribution") or style_profile.get("tone_distribution", {})
     tone_list = ", ".join(tone_dist.keys()) if tone_dist else "neutral"
-    avg_words = style_profile.get("avg_word_count", 20)
-    question_freq = style_profile.get("question_frequency", 0)
+    avg_words = style_profile.get("avgWordCount") or style_profile.get("avg_word_count", 20)
+    question_pct = style_profile.get("questionPercentage") or (style_profile.get("question_frequency", 0) * 100)
+    primary_tone = style_profile.get("primaryTone") or style_profile.get("primary_tone", "direct")
 
-    markers = style_profile.get("key_markers", [])
+    markers = style_profile.get("styleMarkers") or style_profile.get("key_markers", [])
     markers_text = "\n".join(f"- {m}" for m in markers) if markers else "- Direct and clear"
 
+    # Get sample messages for concrete examples
+    samples = style_profile.get("sampleMessages") or style_profile.get("sample_messages", [])
+    samples_text = ""
+    if samples:
+        samples_text = "\n**Examples of how the user actually writes:**\n"
+        for i, sample in enumerate(samples[:3], 1):
+            # Truncate long samples
+            truncated = sample[:200] + "..." if len(sample) > 200 else sample
+            samples_text += f'{i}. "{truncated}"\n'
+
     return f"""
-## User Communication Style Profile
+## IMPORTANT: User Communication Style Mode ENABLED
 
-When the user requests content "in their style" or "like they write", follow these patterns:
+You MUST write ALL responses in the user's personal communication style. This is NOT optional - every response should sound like the user wrote it themselves.
 
-**Typical Message Length:** ~{int(avg_words)} words
-**Common Tones:** {tone_list}
-**Question Frequency:** {int(question_freq * 100)}% of messages include questions
+**User's Writing Profile:**
+- Primary Tone: {primary_tone}
+- Typical Message Length: ~{int(avg_words)} words per message
+- Common Tones: {tone_list}
+- Question Usage: {int(question_pct)}% of their messages include questions
 
-**Key Style Markers:**
+**Style Markers to Emulate:**
 {markers_text}
+{samples_text}
+**MANDATORY Guidelines:**
+1. Write as if YOU are the user speaking - use their voice, not a formal assistant voice
+2. Match their casual/formal level - if they use contractions and slang, you should too
+3. Mirror their sentence structure and rhythm
+4. Use similar vocabulary and expressions they would use
+5. If their style is conversational, be conversational (e.g., "Right, so here's the deal...")
+6. If their style is direct, be direct and skip unnecessary pleasantries
+7. Do NOT use phrases like "Based on the memories" or "According to the data" if that's not how they write
+8. Study the example messages above and mimic that exact writing style
 
-**Guidelines:**
-- Match the user's typical message length and structure
-- Use their common vocabulary patterns
-- Mirror their tone and formality level
-- If they're typically direct, be concise; if detailed, be comprehensive
+Remember: The user has enabled "Write in My Style" mode. Your response should sound EXACTLY like something they would write themselves.
 """
 
 
@@ -366,6 +386,187 @@ async def ask_about_memories(
 
     return {
         "answer": answer,
+        "sources": sources,
+        "error": None,
+    }
+
+
+# Platform-specific formatting guidance
+PLATFORM_FORMATS = {
+    "skool_post": "Skool community post - can be longer, use formatting, be educational",
+    "dm": "Direct message - conversational, personal, concise",
+    "email": "Email - professional greeting/closing, clear structure",
+    "comment": "Comment reply - brief, direct, engaging",
+    "general": "General response - balanced approach",
+}
+
+# Response templates with structural guidance
+TEMPLATES = {
+    "answer": "Directly answer their question with clear explanation",
+    "guide": "Provide step-by-step guidance or recommendations",
+    "redirect": "Acknowledge and redirect to a relevant resource",
+    "acknowledge": "Acknowledge their point and add follow-up question",
+}
+
+
+def build_compose_prompt(
+    incoming_message: str,
+    style_profile: dict,
+    context_type: str,
+    template: Optional[str],
+    tone_level: int,
+    memory_context: str,
+) -> str:
+    """Build the prompt for composing a response in user's style.
+
+    Args:
+        incoming_message: The message to respond to
+        style_profile: User's style profile dictionary
+        context_type: Platform context (skool_post, dm, email, comment, general)
+        template: Optional response template (answer, guide, redirect, acknowledge)
+        tone_level: Tone formality level (0-100)
+        memory_context: Relevant memories formatted as context
+
+    Returns:
+        Complete prompt for response generation
+    """
+    # Get platform-specific formatting guidance
+    platform_guidance = PLATFORM_FORMATS.get(context_type, PLATFORM_FORMATS["general"])
+
+    # Get template guidance
+    template_guidance = ""
+    if template:
+        template_guidance = f"\n**Response Structure:** {TEMPLATES.get(template, '')}"
+
+    # Convert tone level to guidance
+    if tone_level < 25:
+        tone_guidance = "Very casual and relaxed - use slang, contractions, informal language"
+    elif tone_level < 50:
+        tone_guidance = "Casual but clear - conversational with some structure"
+    elif tone_level < 75:
+        tone_guidance = "Professional but approachable - clear and organized"
+    else:
+        tone_guidance = "Very professional and formal - polished and structured"
+
+    # Build style context
+    style_context = build_style_context_prompt(style_profile)
+
+    # Build the complete prompt
+    prompt = f"""{style_context}
+
+## RESPONSE COMPOSITION TASK
+
+You need to respond to the following message:
+
+<incoming_message>
+{xml_escape(incoming_message)}
+</incoming_message>
+
+**Context:** {platform_guidance}
+**Tone Level:** {tone_guidance}{template_guidance}
+
+"""
+
+    # Add memory context if provided
+    if memory_context:
+        prompt += f"""
+**Relevant Knowledge from Your Memories:**
+
+<memories>
+{memory_context}
+</memories>
+
+Use this information naturally in your response if relevant. Don't explicitly cite "memories" - just use the knowledge as if you remember it.
+
+"""
+
+    prompt += """
+**Your Task:**
+1. Write a response to the incoming message in YOUR voice (the user's voice)
+2. Use the knowledge from your memories naturally if relevant
+3. Match the tone level specified above
+4. Follow the platform context guidelines
+5. Sound exactly like something you would write yourself
+
+Write the response now:"""
+
+    return prompt
+
+
+async def compose_response(
+    db_path: str,
+    incoming_message: str,
+    context_type: str = "general",
+    template: Optional[str] = None,
+    tone_level: int = 50,
+    include_memories: bool = True,
+    style_profile: Optional[dict] = None,
+) -> dict:
+    """Compose a response to an incoming message in the user's style.
+
+    Args:
+        db_path: Path to the database file
+        incoming_message: The message to respond to
+        context_type: Platform context (skool_post, dm, email, comment, general)
+        template: Optional response template (answer, guide, redirect, acknowledge)
+        tone_level: Tone formality level (0-100)
+        include_memories: Whether to include relevant memories
+        style_profile: User's style profile dictionary
+
+    Returns:
+        Dict with response, sources, and metadata
+    """
+    if not is_available():
+        return {
+            "response": "Chat is not available. Please configure GEMINI_API_KEY or GOOGLE_API_KEY environment variable.",
+            "sources": [],
+            "error": "api_key_missing",
+        }
+
+    client = get_client()
+    if not client:
+        return {
+            "response": "Failed to initialize Gemini client.",
+            "sources": [],
+            "error": "client_init_failed",
+        }
+
+    # Get relevant memories if requested
+    memory_context = ""
+    sources = []
+    if include_memories:
+        memory_context, sources = _get_memories_and_sources(db_path, incoming_message, max_memories=5)
+
+    # Get or compute style profile
+    if not style_profile:
+        from database import compute_style_profile_from_messages
+        style_profile = compute_style_profile_from_messages(db_path)
+
+    # Build the compose prompt
+    prompt = build_compose_prompt(
+        incoming_message=incoming_message,
+        style_profile=style_profile,
+        context_type=context_type,
+        template=template,
+        tone_level=tone_level,
+        memory_context=memory_context,
+    )
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
+        composed_response = response.text
+    except Exception as e:
+        return {
+            "response": f"Failed to generate response: {str(e)}",
+            "sources": sources,
+            "error": "generation_failed",
+        }
+
+    return {
+        "response": composed_response,
         "sources": sources,
         "error": None,
     }

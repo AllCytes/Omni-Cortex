@@ -39,6 +39,7 @@ import {
   Wand2,
 } from 'lucide-vue-next'
 import ImageGenerationPanel from './ImageGenerationPanel.vue'
+import ResponseComposer from './ResponseComposer.vue'
 import { marked } from 'marked'
 import SourceTooltip from './SourceTooltip.vue'
 import { sanitizeMarkdown } from '@/utils/sanitize'
@@ -99,8 +100,8 @@ const currentSearchIndex = ref(0)
 // Keyboard shortcuts help
 const showShortcutsHelp = ref(false)
 
-// Mode toggle: 'chat' or 'image'
-const mode = ref<'chat' | 'image'>('chat')
+// Mode toggle: 'chat', 'compose', or 'image'
+const mode = ref<'chat' | 'compose' | 'image'>('chat')
 
 // Style mode state
 const useStyleMode = ref(false)
@@ -721,6 +722,16 @@ const emit = defineEmits<{
             Chat
           </button>
           <button
+            @click="mode = 'compose'"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+            :class="mode === 'compose'
+              ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'"
+          >
+            <Wand2 class="w-4 h-4" />
+            Compose
+          </button>
+          <button
             @click="mode = 'image'"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
             :class="mode === 'image'
@@ -731,7 +742,7 @@ const emit = defineEmits<{
             Generate
           </button>
         </div>
-        <span class="font-semibold">{{ mode === 'chat' ? 'Ask About Memories' : 'Image Generation' }}</span>
+        <span class="font-semibold">{{ mode === 'chat' ? 'Ask About Memories' : mode === 'compose' ? 'Response Composer' : 'Image Generation' }}</span>
       </div>
 
       <!-- Header Actions -->
@@ -821,9 +832,12 @@ const emit = defineEmits<{
       </button>
     </div>
 
+    <!-- Response Composer Mode -->
+    <ResponseComposer v-if="mode === 'compose'" />
+
     <!-- Image Generation Mode -->
     <ImageGenerationPanel
-      v-if="mode === 'image'"
+      v-else-if="mode === 'image'"
       :chat-messages="messages.map(m => ({ role: m.role, content: m.content }))"
     />
 

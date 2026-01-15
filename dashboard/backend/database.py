@@ -1189,10 +1189,14 @@ def get_user_messages(
             except (json.JSONDecodeError, TypeError):
                 pass
 
+        # Get primary tone (first in the list) for frontend compatibility
+        primary_tone = tone_indicators[0] if tone_indicators else None
+
         messages.append({
             "id": row["id"],
             "session_id": row["session_id"],
-            "timestamp": row["timestamp"],
+            "created_at": row["timestamp"],  # Frontend expects created_at
+            "timestamp": row["timestamp"],   # Keep for backward compatibility
             "content": row["content"],
             "word_count": row["word_count"],
             "char_count": row["char_count"],
@@ -1200,6 +1204,7 @@ def get_user_messages(
             "has_code_blocks": bool(row["has_code_blocks"]),
             "has_questions": bool(row["has_questions"]),
             "has_commands": bool(row["has_commands"]),
+            "tone": primary_tone,            # Frontend expects single tone string
             "tone_indicators": tone_indicators,
             "project_path": row["project_path"],
         })
@@ -1427,4 +1432,222 @@ def _row_to_sample(row) -> dict:
         "has_code_blocks": bool(row["has_code_blocks"]),
         "has_questions": bool(row["has_questions"]),
         "tone_indicators": tone_indicators,
+    }
+
+
+def get_style_samples_by_category(db_path: str, samples_per_tone: int = 3) -> dict:
+    """Get sample user messages grouped by style category.
+
+    Maps tone_indicators to frontend categories:
+    - professional: direct, polite, formal tones
+    - casual: casual tones
+    - technical: technical tones
+    - creative: unique patterns, inquisitive tones
+
+    Args:
+        db_path: Path to database
+        samples_per_tone: Max samples per category
+
+    Returns:
+        Dict with professional, casual, technical, creative lists
+    """
+    conn = get_connection(db_path)
+
+    # Check if user_messages table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_messages'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return {
+            "professional": [],
+            "casual": [],
+            "technical": [],
+            "creative": []
+        }
+
+    result = {
+        "professional": [],
+        "casual": [],
+        "technical": [],
+        "creative": []
+    }
+
+    # Mapping from tone_indicators to categories
+    tone_to_category = {
+        "direct": "professional",
+        "polite": "professional",
+        "formal": "professional",
+        "casual": "casual",
+        "technical": "technical",
+        "inquisitive": "creative",
+        "urgent": "professional",
+    }
+
+    # Get all messages with tone indicators
+    cursor = conn.execute(
+        """SELECT content, tone_indicators FROM user_messages
+           WHERE tone_indicators IS NOT NULL AND tone_indicators != '[]'
+           ORDER BY timestamp DESC LIMIT 200"""
+    )
+
+    for row in cursor.fetchall():
+        content = row["content"]
+        try:
+            tones = json.loads(row["tone_indicators"]) if row["tone_indicators"] else []
+        except (json.JSONDecodeError, TypeError):
+            tones = []
+
+        # Map to categories
+        for tone in tones:
+            category = tone_to_category.get(tone.lower(), "creative")
+            if len(result[category]) < samples_per_tone:
+                # Truncate content for preview
+                preview = content[:200] + "..." if len(content) > 200 else content
+                if preview not in result[category]:
+                    result[category].append(preview)
+                    break  # Only add to first matching category
+
+    # Fill any empty categories with recent messages
+    if any(len(v) == 0 for v in result.values()):
+        cursor = conn.execute(
+            "SELECT content FROM user_messages ORDER BY timestamp DESC LIMIT ?",
+            (samples_per_tone * 4,)
+        )
+        fallback_messages = [
+            row["content"][:200] + "..." if len(row["content"]) > 200 else row["content"]
+            for row in cursor.fetchall()
+        ]
+
+        for category in result:
+            if len(result[category]) == 0 and fallback_messages:
+                # Take messages for empty categories
+                for msg in fallback_messages[:samples_per_tone]:
+                    if msg not in [m for v in result.values() for m in v]:
+                        result[category].append(msg)
+
+    conn.close()
+    return result
+
+
+def compute_style_profile_from_messages(db_path: str) -> Optional[dict]:
+    """Compute a style profile from user_messages table.
+
+    This is used when no pre-computed profile exists.
+
+    Returns format expected by frontend StyleProfileCard:
+    - total_messages: int
+    - avg_word_count: float
+    - primary_tone: str
+    - question_percentage: float
+    - tone_distribution: dict[str, int]
+    - style_markers: list[str]
+    """
+    conn = get_connection(db_path)
+
+    # Check if user_messages table exists
+    table_check = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_messages'"
+    ).fetchone()
+
+    if not table_check:
+        conn.close()
+        return None
+
+    # Get total count and averages
+    stats = conn.execute(
+        """SELECT
+           COUNT(*) as total,
+           AVG(word_count) as avg_words,
+           AVG(char_count) as avg_chars,
+           SUM(CASE WHEN has_questions = 1 THEN 1 ELSE 0 END) as question_count
+           FROM user_messages"""
+    ).fetchone()
+
+    if not stats or stats["total"] == 0:
+        conn.close()
+        return None
+
+    total_messages = stats["total"]
+    avg_word_count = stats["avg_words"] or 0
+    question_percentage = (stats["question_count"] / total_messages * 100) if total_messages > 0 else 0
+
+    # Compute tone distribution
+    tone_distribution = {}
+    cursor = conn.execute(
+        "SELECT tone_indicators FROM user_messages WHERE tone_indicators IS NOT NULL AND tone_indicators != '[]'"
+    )
+    for row in cursor.fetchall():
+        try:
+            tones = json.loads(row["tone_indicators"]) if row["tone_indicators"] else []
+            for tone in tones:
+                tone_lower = tone.lower()
+                tone_distribution[tone_lower] = tone_distribution.get(tone_lower, 0) + 1
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Determine primary tone (most common)
+    primary_tone = "direct"
+    if tone_distribution:
+        primary_tone = max(tone_distribution, key=tone_distribution.get)
+
+    # Generate style markers based on the data
+    style_markers = []
+
+    if avg_word_count < 15:
+        style_markers.append("Concise")
+    elif avg_word_count > 40:
+        style_markers.append("Detailed")
+    else:
+        style_markers.append("Balanced length")
+
+    if question_percentage > 40:
+        style_markers.append("Question-driven")
+    elif question_percentage < 10:
+        style_markers.append("Statement-focused")
+
+    # Check for code usage
+    code_stats = conn.execute(
+        "SELECT SUM(CASE WHEN has_code_blocks = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as code_pct FROM user_messages"
+    ).fetchone()
+    if code_stats and code_stats["code_pct"] and code_stats["code_pct"] > 20:
+        style_markers.append("Code-heavy")
+
+    # Add primary tone to markers
+    tone_labels = {
+        "direct": "Direct",
+        "polite": "Polite",
+        "technical": "Technical",
+        "casual": "Casual",
+        "inquisitive": "Inquisitive",
+        "urgent": "Urgent",
+    }
+    if primary_tone in tone_labels:
+        style_markers.append(tone_labels[primary_tone])
+
+    if not style_markers:
+        style_markers.append("Building profile...")
+
+    # Get sample messages to show the AI how the user actually writes
+    sample_messages = []
+    cursor = conn.execute(
+        """SELECT content FROM user_messages
+           WHERE length(content) > 20 AND length(content) < 500
+           AND has_commands = 0
+           ORDER BY timestamp DESC LIMIT 5"""
+    )
+    for row in cursor.fetchall():
+        sample_messages.append(row["content"])
+
+    conn.close()
+
+    return {
+        "totalMessages": total_messages,
+        "avgWordCount": round(avg_word_count, 1),
+        "primaryTone": primary_tone,
+        "questionPercentage": round(question_percentage, 1),
+        "toneDistribution": tone_distribution,
+        "styleMarkers": style_markers,
+        "sampleMessages": sample_messages,
     }

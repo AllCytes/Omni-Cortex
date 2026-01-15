@@ -297,3 +297,37 @@ export const TONE_TEXT_COLORS: Record<string, string> = {
   urgent: 'text-red-500',
   neutral: 'text-gray-500',
 }
+
+// === Response Composer Types ===
+
+export type ContextType = 'skool_post' | 'dm' | 'email' | 'comment' | 'general'
+export type ResponseTemplate = 'answer' | 'guide' | 'redirect' | 'acknowledge'
+
+export interface ComposeRequest {
+  incoming_message: string
+  context_type: ContextType
+  template?: ResponseTemplate
+  tone_level: number
+  include_memories: boolean
+}
+
+export interface ComposedResponse {
+  id: string
+  response: string
+  sources: ChatSource[]
+  style_applied: boolean
+  tone_level: number
+  template_used?: ResponseTemplate
+  incoming_message: string
+  context_type: ContextType
+  created_at: string
+}
+
+export interface ChatSource {
+  id: string
+  type: string
+  content_preview: string
+  tags: string[]
+  project_path?: string
+  project_name?: string
+}

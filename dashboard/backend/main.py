@@ -54,6 +54,8 @@ from database import (
     get_skill_usage,
     get_style_profile,
     get_style_samples,
+    get_style_samples_by_category,
+    compute_style_profile_from_messages,
     get_timeline,
     get_tool_usage,
     get_type_distribution,
@@ -73,6 +75,8 @@ from models import (
     BulkDeleteRequest,
     ChatRequest,
     ChatResponse,
+    ComposeRequest,
+    ComposeResponse,
     ConversationSaveRequest,
     ConversationSaveResponse,
     FilterParams,
@@ -1023,7 +1027,11 @@ async def chat_with_memories(
         style_context = None
         if request.use_style:
             try:
-                style_context = get_style_profile(project)
+                # First try computed profile from user_messages (richer data)
+                style_context = compute_style_profile_from_messages(project)
+                # Fall back to stored profile if no user_messages
+                if not style_context:
+                    style_context = get_style_profile(project)
             except Exception:
                 pass  # Graceful fallback if no style data
 
@@ -1061,7 +1069,11 @@ async def stream_chat(
     style_context = None
     if use_style:
         try:
-            style_context = get_style_profile(project)
+            # First try computed profile from user_messages (richer data)
+            style_context = compute_style_profile_from_messages(project)
+            # Fall back to stored profile if no user_messages
+            if not style_context:
+                style_context = get_style_profile(project)
         except Exception:
             pass  # Graceful fallback if no style data
 
@@ -1108,6 +1120,60 @@ async def save_chat_conversation(
     except Exception as e:
         log_error("/api/chat/save", e)
         raise
+
+
+@app.post("/api/compose-response", response_model=ComposeResponse)
+@rate_limit("10/minute")
+async def compose_response_endpoint(
+    request: ComposeRequest,
+    project: str = Query(..., description="Path to the database file"),
+):
+    """Compose a response to an incoming message in the user's style."""
+    try:
+        if not Path(project).exists():
+            log_error("/api/compose-response", FileNotFoundError("Database not found"))
+            raise HTTPException(status_code=404, detail="Database not found")
+
+        # Get style profile
+        style_profile = compute_style_profile_from_messages(project)
+
+        # Compose the response
+        result = await chat_service.compose_response(
+            db_path=project,
+            incoming_message=request.incoming_message,
+            context_type=request.context_type,
+            template=request.template,
+            tone_level=request.tone_level,
+            include_memories=request.include_memories,
+            style_profile=style_profile,
+        )
+
+        if result.get("error"):
+            log_error("/api/compose-response", Exception(result["error"]))
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        # Build response model
+        import uuid
+        from datetime import datetime
+        response = ComposeResponse(
+            id=str(uuid.uuid4()),
+            response=result["response"],
+            sources=result["sources"],
+            style_applied=bool(style_profile and style_profile.get("total_messages", 0) > 0),
+            tone_level=request.tone_level,
+            template_used=request.template,
+            incoming_message=request.incoming_message,
+            context_type=request.context_type,
+            created_at=datetime.now().isoformat(),
+        )
+
+        log_success("/api/compose-response", context=request.context_type, tone=request.tone_level)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error("/api/compose-response", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # --- Image Generation Endpoints ---
@@ -1262,6 +1328,7 @@ async def list_user_messages(
         )
 
         total_count = get_user_message_count(project, session_id=session_id)
+        has_more = (offset + len(messages)) < total_count
 
         log_success("/api/user-messages", count=len(messages), total=total_count)
         return UserMessagesResponse(
@@ -1269,6 +1336,7 @@ async def list_user_messages(
             total_count=total_count,
             limit=limit,
             offset=offset,
+            has_more=has_more,
         )
     except HTTPException:
         raise
@@ -1321,79 +1389,100 @@ async def delete_user_messages_bulk_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/style-profile")
+@app.get("/api/style/profile")
 async def get_style_profile_endpoint(
     project: str = Query(..., description="Path to the database file"),
     project_path: Optional[str] = Query(None, description="Project-specific profile path, or None for global"),
 ):
     """Get user style profile for style analysis.
 
-    Returns aggregated style metrics including:
-    - Average word/char counts
-    - Common phrases
-    - Formality score
-    - Question/command frequencies
-    - Greeting and instruction patterns
+    Returns style metrics computed from user messages:
+    - total_messages: Total message count
+    - avg_word_count: Average words per message
+    - primary_tone: Most common tone (direct, polite, technical, etc.)
+    - question_percentage: Percentage of messages containing questions
+    - tone_distribution: Count of messages by tone
+    - style_markers: Descriptive labels for writing style
     """
     try:
         if not Path(project).exists():
             raise HTTPException(status_code=404, detail="Database not found")
 
+        # First try to get pre-computed profile from user_style_profiles table
         profile = get_style_profile(project, project_path=project_path)
 
+        # If no stored profile, compute from user_messages
         if not profile:
-            # Return empty profile structure if none exists
+            profile = compute_style_profile_from_messages(project)
+
+        # If still no profile (no user_messages), return empty structure
+        if not profile:
             return {
-                "id": None,
-                "project_path": project_path,
-                "total_messages": 0,
-                "avg_word_count": None,
-                "avg_char_count": None,
-                "common_phrases": [],
-                "vocabulary_richness": None,
-                "formality_score": None,
-                "question_frequency": None,
-                "command_frequency": None,
-                "code_block_frequency": None,
-                "punctuation_style": None,
-                "greeting_patterns": [],
-                "instruction_style": None,
-                "sample_messages": [],
-                "created_at": None,
-                "updated_at": None,
+                "totalMessages": 0,
+                "avgWordCount": 0,
+                "primaryTone": "direct",
+                "questionPercentage": 0,
+                "toneDistribution": {},
+                "styleMarkers": ["No data available yet"],
             }
 
-        log_success("/api/style-profile", has_profile=True)
+        # Convert stored profile format to frontend expected format if needed
+        if "totalMessages" in profile:
+            # Already in camelCase format from compute_style_profile_from_messages
+            pass
+        elif "id" in profile:
+            # Convert stored profile (from user_style_profiles table) to frontend format
+            tone_dist = {}
+            # Stored profile doesn't have tone_distribution, so compute it
+            computed = compute_style_profile_from_messages(project)
+            if computed:
+                tone_dist = computed.get("toneDistribution", {})
+                primary_tone = computed.get("primaryTone", "direct")
+                style_markers = computed.get("styleMarkers", [])
+            else:
+                primary_tone = "direct"
+                style_markers = []
+
+            profile = {
+                "totalMessages": profile.get("total_messages", 0),
+                "avgWordCount": profile.get("avg_word_count", 0) or 0,
+                "primaryTone": primary_tone,
+                "questionPercentage": (profile.get("question_frequency", 0) or 0) * 100,
+                "toneDistribution": tone_dist,
+                "styleMarkers": style_markers or profile.get("greeting_patterns", []) or [],
+            }
+
+        log_success("/api/style/profile", has_profile=True, total_messages=profile.get("totalMessages", 0))
         return profile
     except HTTPException:
         raise
     except Exception as e:
-        log_error("/api/style-profile", e)
+        log_error("/api/style/profile", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/style-samples", response_model=list[StyleSample])
+@app.get("/api/style/samples")
 async def get_style_samples_endpoint(
     project: str = Query(..., description="Path to the database file"),
-    limit: int = Query(10, ge=1, le=50),
+    samples_per_tone: int = Query(3, ge=1, le=10, description="Max samples per tone category"),
 ):
     """Get sample user messages for style analysis preview.
 
-    Returns a diverse selection of messages showcasing different writing styles,
-    including recent messages, messages with code blocks, and longer messages.
+    Returns messages grouped by style category (professional, casual, technical, creative).
     """
     try:
         if not Path(project).exists():
             raise HTTPException(status_code=404, detail="Database not found")
 
-        samples = get_style_samples(project, limit=limit)
+        samples = get_style_samples_by_category(project, samples_per_tone=samples_per_tone)
 
-        log_success("/api/style-samples", count=len(samples))
-        return [StyleSample(**s) for s in samples]
+        total_count = sum(len(v) for v in samples.values())
+        log_success("/api/style/samples", count=total_count)
+        return samples
     except HTTPException:
         raise
     except Exception as e:
-        log_error("/api/style-samples", e)
+        log_error("/api/style/samples", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 

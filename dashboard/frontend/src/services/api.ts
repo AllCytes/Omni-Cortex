@@ -307,6 +307,19 @@ export async function saveConversation(
   return response.data
 }
 
+// Response Composer
+export async function composeResponse(
+  dbPath: string,
+  request: import('@/types').ComposeRequest
+): Promise<import('@/types').ComposedResponse> {
+  const response = await api.post<import('@/types').ComposedResponse>(
+    `/compose-response?project=${encodeURIComponent(dbPath)}`,
+    request,
+    { timeout: 60000 }
+  )
+  return response.data
+}
+
 // --- Stats Endpoints for Charts ---
 
 export interface ActivityHeatmapEntry {
