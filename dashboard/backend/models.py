@@ -196,6 +196,7 @@ class ChatRequest(BaseModel):
 
     question: str = Field(..., min_length=1, max_length=2000)
     max_memories: int = Field(default=10, ge=1, le=50)
+    use_style: bool = Field(default=False)
 
 
 class ChatSource(BaseModel):

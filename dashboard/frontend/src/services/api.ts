@@ -236,9 +236,10 @@ export function streamChatResponse(
   onChunk: (text: string) => void,
   onSources: (sources: ChatSource[]) => void,
   onDone: () => void,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
+  useStyle: boolean = false
 ): () => void {
-  const url = `/api/chat/stream?project=${encodeURIComponent(dbPath)}&question=${encodeURIComponent(question)}`
+  const url = `/api/chat/stream?project=${encodeURIComponent(dbPath)}&question=${encodeURIComponent(question)}&use_style=${useStyle}`
 
   const eventSource = new EventSource(url)
 

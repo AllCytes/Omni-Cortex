@@ -42,7 +42,38 @@ def is_available() -> bool:
         return False
 
 
-def _build_prompt(question: str, context_str: str) -> str:
+def build_style_context_prompt(style_profile: dict) -> str:
+    """Build a prompt section describing user's communication style."""
+
+    tone_dist = style_profile.get("tone_distribution", {})
+    tone_list = ", ".join(tone_dist.keys()) if tone_dist else "neutral"
+    avg_words = style_profile.get("avg_word_count", 20)
+    question_freq = style_profile.get("question_frequency", 0)
+
+    markers = style_profile.get("key_markers", [])
+    markers_text = "\n".join(f"- {m}" for m in markers) if markers else "- Direct and clear"
+
+    return f"""
+## User Communication Style Profile
+
+When the user requests content "in their style" or "like they write", follow these patterns:
+
+**Typical Message Length:** ~{int(avg_words)} words
+**Common Tones:** {tone_list}
+**Question Frequency:** {int(question_freq * 100)}% of messages include questions
+
+**Key Style Markers:**
+{markers_text}
+
+**Guidelines:**
+- Match the user's typical message length and structure
+- Use their common vocabulary patterns
+- Mirror their tone and formality level
+- If they're typically direct, be concise; if detailed, be comprehensive
+"""
+
+
+def _build_prompt(question: str, context_str: str, style_context: Optional[str] = None) -> str:
     """Build the prompt for the AI model with injection protection."""
     system_instruction = """You are a helpful assistant that answers questions about stored memories and knowledge.
 
@@ -58,6 +89,10 @@ Instructions:
 5. If the question is asking for a recommendation or decision, synthesize from multiple memories if possible
 
 Answer:"""
+
+    # Add style context if provided
+    if style_context:
+        system_instruction = f"{system_instruction}\n\n{style_context}"
 
     return build_safe_prompt(
         system_instruction=system_instruction,
@@ -112,8 +147,15 @@ async def stream_ask_about_memories(
     db_path: str,
     question: str,
     max_memories: int = 10,
+    style_context: Optional[dict] = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Stream a response to a question about memories.
+
+    Args:
+        db_path: Path to the database file
+        question: The user's question
+        max_memories: Maximum memories to include in context
+        style_context: Optional user style profile dictionary
 
     Yields events with type 'sources', 'chunk', 'done', or 'error'.
     """
@@ -155,8 +197,13 @@ async def stream_ask_about_memories(
         "data": sources,
     }
 
+    # Build style context prompt if provided
+    style_prompt = None
+    if style_context:
+        style_prompt = build_style_context_prompt(style_context)
+
     # Build and stream the response
-    prompt = _build_prompt(question, context_str)
+    prompt = _build_prompt(question, context_str, style_prompt)
 
     try:
         # Use streaming with the new google.genai client
@@ -260,6 +307,7 @@ async def ask_about_memories(
     db_path: str,
     question: str,
     max_memories: int = 10,
+    style_context: Optional[dict] = None,
 ) -> dict:
     """Ask a natural language question about memories (non-streaming).
 
@@ -267,6 +315,7 @@ async def ask_about_memories(
         db_path: Path to the database file
         question: The user's question
         max_memories: Maximum memories to include in context
+        style_context: Optional user style profile dictionary
 
     Returns:
         Dict with answer and sources
@@ -295,7 +344,12 @@ async def ask_about_memories(
             "error": None,
         }
 
-    prompt = _build_prompt(question, context_str)
+    # Build style context prompt if provided
+    style_prompt = None
+    if style_context:
+        style_prompt = build_style_context_prompt(style_context)
+
+    prompt = _build_prompt(question, context_str, style_prompt)
 
     try:
         response = client.models.generate_content(

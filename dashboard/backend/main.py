@@ -1019,10 +1019,19 @@ async def chat_with_memories(
             log_error("/api/chat", FileNotFoundError("Database not found"), question=request.question[:50])
             raise HTTPException(status_code=404, detail="Database not found")
 
+        # Fetch style profile if style mode enabled
+        style_context = None
+        if request.use_style:
+            try:
+                style_context = get_style_profile(project)
+            except Exception:
+                pass  # Graceful fallback if no style data
+
         result = await chat_service.ask_about_memories(
             project,
             request.question,
             request.max_memories,
+            style_context,
         )
 
         log_success("/api/chat", question_len=len(request.question), sources=len(result.get("sources", [])))
@@ -1040,6 +1049,7 @@ async def stream_chat(
     project: str = Query(..., description="Path to the database file"),
     question: str = Query(..., description="The question to ask"),
     max_memories: int = Query(10, ge=1, le=50),
+    use_style: bool = Query(False, description="Use user's communication style"),
 ):
     """SSE endpoint for streaming chat responses."""
     from fastapi.responses import StreamingResponse
@@ -1047,9 +1057,17 @@ async def stream_chat(
     if not Path(project).exists():
         raise HTTPException(status_code=404, detail="Database not found")
 
+    # Fetch style profile if style mode enabled
+    style_context = None
+    if use_style:
+        try:
+            style_context = get_style_profile(project)
+        except Exception:
+            pass  # Graceful fallback if no style data
+
     async def event_generator():
         try:
-            async for event in chat_service.stream_ask_about_memories(project, question, max_memories):
+            async for event in chat_service.stream_ask_about_memories(project, question, max_memories, style_context):
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"

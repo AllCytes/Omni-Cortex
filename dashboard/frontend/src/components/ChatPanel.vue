@@ -7,8 +7,10 @@ import {
   cancelChatRequest,
   streamChatResponse,
   saveConversation,
+  getStyleProfile,
   type ChatSource,
 } from '@/services/api'
+import type { StyleProfile } from '@/types'
 import {
   Send,
   Loader2,
@@ -33,6 +35,8 @@ import {
   FileJson,
   Clipboard,
   Image,
+  Sparkles,
+  Wand2,
 } from 'lucide-vue-next'
 import ImageGenerationPanel from './ImageGenerationPanel.vue'
 import { marked } from 'marked'
@@ -98,6 +102,11 @@ const showShortcutsHelp = ref(false)
 // Mode toggle: 'chat' or 'image'
 const mode = ref<'chat' | 'image'>('chat')
 
+// Style mode state
+const useStyleMode = ref(false)
+const styleProfile = ref<StyleProfile | null>(null)
+const loadingStyle = ref(false)
+
 // Type colors for source badges
 const TYPE_COLORS: Record<string, string> = {
   decision: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
@@ -140,6 +149,21 @@ onUnmounted(() => {
 watch(() => store.currentDbPath, () => {
   isSaved.value = false
   savedMemoryId.value = null
+})
+
+// Load style profile when toggled on
+watch(useStyleMode, async (enabled) => {
+  if (enabled && !styleProfile.value && store.currentDbPath) {
+    loadingStyle.value = true
+    try {
+      styleProfile.value = await getStyleProfile(store.currentDbPath)
+    } catch (e) {
+      console.error('Failed to load style profile:', e)
+      useStyleMode.value = false
+    } finally {
+      loadingStyle.value = false
+    }
+  }
 })
 
 function startElapsedTimer() {
@@ -262,7 +286,8 @@ async function sendMessageStreaming(question: string) {
         isLoading.value = false
         stopElapsedTimer()
         streamCleanup = null
-      }
+      },
+      useStyleMode.value
     )
   } catch (e) {
     // Fallback to non-streaming
@@ -628,6 +653,26 @@ function useSuggestedPrompt(prompt: string) {
   sendMessage()
 }
 
+// Quick prompt actions for style
+function insertQuickPrompt(type: string) {
+  switch (type) {
+    case 'write-like-me':
+      inputValue.value = 'Write the following in my communication style: '
+      useStyleMode.value = true
+      nextTick(() => {
+        inputRef.value?.focus()
+        // Move cursor to end
+        const len = inputValue.value.length
+        inputRef.value?.setSelectionRange(len, len)
+      })
+      break
+    case 'analyze-style':
+      inputValue.value = 'Analyze my communication style based on my message history and provide insights.'
+      useStyleMode.value = true
+      break
+  }
+}
+
 // Follow-up actions
 function sendFollowUp(text: string) {
   inputValue.value = text
@@ -804,7 +849,10 @@ const emit = defineEmits<{
       <!-- Messages -->
       <div
         ref="messagesContainer"
-        class="flex-1 overflow-y-auto p-4 space-y-4"
+        :class="[
+          'flex-1 overflow-y-auto p-4 space-y-4',
+          useStyleMode && styleProfile ? 'bg-gradient-to-b from-indigo-50/30 to-transparent dark:from-indigo-900/10' : ''
+        ]"
       >
         <!-- Empty State with Suggested Prompts -->
         <div v-if="messages.length === 0" class="h-full flex items-center justify-center">
@@ -1052,6 +1100,51 @@ const emit = defineEmits<{
 
       <!-- Input Area -->
       <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+        <!-- Style Mode Toggle -->
+        <div class="flex items-center justify-between px-2 py-2 mb-2 border-b border-gray-100 dark:border-gray-600">
+          <div class="flex items-center gap-4">
+            <!-- Style Toggle -->
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                v-model="useStyleMode"
+                class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span class="text-sm font-medium flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                <User class="w-4 h-4" />
+                Write in My Style
+              </span>
+            </label>
+
+            <!-- Style Active Indicator -->
+            <span
+              v-if="useStyleMode && styleProfile"
+              class="text-xs px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full flex items-center gap-1"
+            >
+              <Sparkles class="w-3 h-3" />
+              Style: {{ Object.keys(styleProfile.tone_distribution || {})[0] || 'Active' }}
+            </span>
+
+            <!-- Loading Indicator -->
+            <span v-if="loadingStyle" class="text-xs text-gray-500 flex items-center gap-1">
+              <Loader2 class="w-3 h-3 animate-spin" />
+              Loading style...
+            </span>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="flex items-center gap-2">
+            <button
+              @click="insertQuickPrompt('write-like-me')"
+              class="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg flex items-center gap-1.5 transition-colors text-gray-700 dark:text-gray-300"
+              title="Generate content in your style"
+            >
+              <Wand2 class="w-3 h-3" />
+              Draft in my voice
+            </button>
+          </div>
+        </div>
+
         <!-- Save Conversation Button -->
         <div v-if="messages.length > 1" class="flex justify-end mb-2">
           <button
