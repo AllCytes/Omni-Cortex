@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Project, Memory, MemoryStats, MemoryUpdate, Activity, Session, TimelineEntry, FilterState, ProjectConfig } from '@/types'
+import type { Project, Memory, MemoryStats, MemoryUpdate, Activity, Session, TimelineEntry, FilterState, ProjectConfig, UserMessage, UserMessageFilters, UserMessagesResponse, StyleProfile, StyleSamples } from '@/types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -753,6 +753,76 @@ export async function askAcrossProjects(
       max_memories_per_project: maxMemoriesPerProject,
     },
     { timeout: 120000 }
+  )
+  return response.data
+}
+
+// === Style Tab API ===
+
+// Get user messages with optional filters
+export async function getUserMessages(
+  dbPath: string,
+  filters: UserMessageFilters = {},
+  limit = 50,
+  offset = 0
+): Promise<UserMessagesResponse> {
+  const params = new URLSearchParams({
+    project: dbPath,
+    limit: limit.toString(),
+    offset: offset.toString(),
+  })
+
+  if (filters.tone) params.set('tone', filters.tone)
+  if (filters.search) params.set('search', filters.search)
+  if (filters.min_word_count !== undefined) params.set('min_word_count', filters.min_word_count.toString())
+  if (filters.max_word_count !== undefined) params.set('max_word_count', filters.max_word_count.toString())
+  if (filters.since) params.set('since', filters.since)
+  if (filters.until) params.set('until', filters.until)
+
+  const response = await api.get<UserMessagesResponse>(`/user-messages?${params}`)
+  return response.data
+}
+
+// Delete a single user message
+export async function deleteUserMessage(
+  dbPath: string,
+  messageId: string
+): Promise<{ message: string; id: string }> {
+  const response = await api.delete<{ message: string; id: string }>(
+    `/user-messages/${messageId}?project=${encodeURIComponent(dbPath)}`
+  )
+  return response.data
+}
+
+// Bulk delete user messages
+export async function bulkDeleteUserMessages(
+  dbPath: string,
+  messageIds: string[]
+): Promise<{ deleted_count: number }> {
+  const response = await api.post<{ deleted_count: number }>(
+    `/user-messages/bulk-delete?project=${encodeURIComponent(dbPath)}`,
+    messageIds
+  )
+  return response.data
+}
+
+// Get style profile analysis
+export async function getStyleProfile(
+  dbPath: string
+): Promise<StyleProfile> {
+  const response = await api.get<StyleProfile>(
+    `/style/profile?project=${encodeURIComponent(dbPath)}`
+  )
+  return response.data
+}
+
+// Get style samples by tone
+export async function getStyleSamples(
+  dbPath: string,
+  samplesPerTone = 3
+): Promise<StyleSamples> {
+  const response = await api.get<StyleSamples>(
+    `/style/samples?project=${encodeURIComponent(dbPath)}&samples_per_tone=${samplesPerTone}`
   )
   return response.data
 }
