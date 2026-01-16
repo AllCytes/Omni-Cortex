@@ -7,7 +7,7 @@
 
 ---
 
-## Current Status: v1.13.0 VERIFIED WORKING ✅ (Published to PyPI)
+## Current Status: v1.14.0 VERIFIED WORKING ✅ (Published to PyPI)
 
 The MCP is **live on PyPI and GitHub**. Users can install with:
 ```bash
@@ -97,6 +97,30 @@ omni-cortex-setup
 - [x] Performance profiling (test_performance.py with 6 benchmarks)
 
 ## Recently Completed
+
+### v1.14.0 (Jan 15, 2026) - Response Composer Enhancements
+**Enhanced Response Composer** with custom instructions and explanation mode for more flexible and helpful response generation.
+
+**New Features:**
+- **Custom Instructions Textarea** - Add specific requirements, questions, or things to include in responses
+- **"Explain to Me" Mode** - Optional explanation of incoming message before generating response
+- **Improved Null Safety** - Better handling of optional style profiles in prompt building
+
+**Backend Changes:**
+- Added `custom_instructions` and `include_explanation` fields to ComposeRequest model
+- Added `explanation` field to ComposeResponse model
+- Updated `build_compose_prompt()` to incorporate custom instructions
+- Added null-safety for style_profile parameter (returns empty string when None)
+
+**Frontend Changes:**
+- Custom instructions textarea in ResponseComposer UI
+- "Explain to me" checkbox option
+- Explanation display section when provided
+- Updated TypeScript interfaces for new fields
+
+**Documentation:**
+- Added implementation spec: `specs/todo/response-composer-enhancements.md`
+- Added dashboard screenshots for documentation
 
 ### v1.13.0 (Jan 15, 2026) - Response Composer Feature
 **Major new feature** enabling AI-powered response composition using personal communication style and domain knowledge.
@@ -222,12 +246,13 @@ d:\Projects\omni-cortex\HANDOFF.md
 
 Continue building Omni Cortex MCP at D:\Projects\omni-cortex.
 
-Status: v1.11.2 - 66 tests passing, 18 tools, all phases complete.
+Status: v1.14.0 - 66 tests passing, 18 tools, all phases complete.
 Embeddings DISABLED by default (keyword search only) - model loading hangs on Windows.
 
-Recent updates (v1.11.2):
-- Dashboard duplication warning banner for Global Index overlap
-- Improved UX for multi-project memory viewing
+Recent updates (v1.14.0):
+- Response Composer enhanced with custom instructions textarea
+- "Explain to me" mode for incoming message understanding
+- Improved null-safety for style profiles
 - All changes released to PyPI and GitHub
 
 All planned features complete. Optional future work:
