@@ -42,8 +42,12 @@ def is_available() -> bool:
         return False
 
 
-def build_style_context_prompt(style_profile: dict) -> str:
+def build_style_context_prompt(style_profile: dict | None) -> str:
     """Build a prompt section describing user's communication style."""
+
+    # Return empty string if no style profile provided
+    if not style_profile:
+        return ""
 
     # Handle both camelCase (new format) and snake_case (old format)
     tone_dist = style_profile.get("toneDistribution") or style_profile.get("tone_distribution", {})
@@ -416,6 +420,8 @@ def build_compose_prompt(
     template: Optional[str],
     tone_level: int,
     memory_context: str,
+    custom_instructions: Optional[str] = None,
+    include_explanation: bool = False,
 ) -> str:
     """Build the prompt for composing a response in user's style.
 
@@ -426,6 +432,8 @@ def build_compose_prompt(
         template: Optional response template (answer, guide, redirect, acknowledge)
         tone_level: Tone formality level (0-100)
         memory_context: Relevant memories formatted as context
+        custom_instructions: Optional specific instructions from the user
+        include_explanation: Whether to explain the incoming message first
 
     Returns:
         Complete prompt for response generation
@@ -480,7 +488,37 @@ Use this information naturally in your response if relevant. Don't explicitly ci
 
 """
 
-    prompt += """
+    # Add custom instructions if provided
+    if custom_instructions:
+        prompt += f"""
+## CUSTOM INSTRUCTIONS FROM USER
+
+The user has provided these specific instructions for the response:
+
+<custom_instructions>
+{xml_escape(custom_instructions)}
+</custom_instructions>
+
+Please incorporate these requirements while maintaining the user's voice.
+
+"""
+
+    # Build task instructions based on explanation mode
+    if include_explanation:
+        prompt += """
+**Your Task:**
+1. FIRST, provide a clear explanation of what the incoming message means or is asking
+   Format: "**Understanding:** [your explanation in user's voice]"
+2. THEN, write a response to the incoming message in YOUR voice
+   Format: "**Response:** [your response]"
+3. Use the knowledge from your memories naturally if relevant
+4. Match the tone level specified above
+5. Follow the platform context guidelines
+6. Sound exactly like something you would write yourself
+
+Write the explanation and response now:"""
+    else:
+        prompt += """
 **Your Task:**
 1. Write a response to the incoming message in YOUR voice (the user's voice)
 2. Use the knowledge from your memories naturally if relevant
@@ -501,6 +539,8 @@ async def compose_response(
     tone_level: int = 50,
     include_memories: bool = True,
     style_profile: Optional[dict] = None,
+    custom_instructions: Optional[str] = None,
+    include_explanation: bool = False,
 ) -> dict:
     """Compose a response to an incoming message in the user's style.
 
@@ -512,6 +552,8 @@ async def compose_response(
         tone_level: Tone formality level (0-100)
         include_memories: Whether to include relevant memories
         style_profile: User's style profile dictionary
+        custom_instructions: Optional specific instructions from the user
+        include_explanation: Whether to explain the incoming message first
 
     Returns:
         Dict with response, sources, and metadata
@@ -550,6 +592,8 @@ async def compose_response(
         template=template,
         tone_level=tone_level,
         memory_context=memory_context,
+        custom_instructions=custom_instructions,
+        include_explanation=include_explanation,
     )
 
     try:
@@ -563,10 +607,25 @@ async def compose_response(
             "response": f"Failed to generate response: {str(e)}",
             "sources": sources,
             "error": "generation_failed",
+            "explanation": None,
         }
+
+    # Parse explanation if requested
+    explanation = None
+    if include_explanation:
+        # Try to extract explanation and response parts
+        import re
+        understanding_match = re.search(r'\*\*Understanding:\*\*\s*(.+?)(?=\*\*Response:\*\*)', composed_response, re.DOTALL)
+        response_match = re.search(r'\*\*Response:\*\*\s*(.+)', composed_response, re.DOTALL)
+
+        if understanding_match and response_match:
+            explanation = understanding_match.group(1).strip()
+            composed_response = response_match.group(1).strip()
+        # If parsing fails, leave explanation as None and return full response
 
     return {
         "response": composed_response,
         "sources": sources,
         "error": None,
+        "explanation": explanation,
     }

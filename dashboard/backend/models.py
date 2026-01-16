@@ -384,6 +384,8 @@ class ComposeRequest(BaseModel):
     template: Optional[str] = None  # answer, guide, redirect, acknowledge
     tone_level: int = Field(default=50, ge=0, le=100)  # 0=casual, 100=professional
     include_memories: bool = Field(default=True)
+    custom_instructions: Optional[str] = Field(default=None, max_length=2000)
+    include_explanation: bool = Field(default=False)
 
 
 class ComposeResponse(BaseModel):
@@ -398,3 +400,5 @@ class ComposeResponse(BaseModel):
     incoming_message: str
     context_type: str
     created_at: str
+    custom_instructions: Optional[str] = None
+    explanation: Optional[str] = None

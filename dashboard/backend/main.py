@@ -1146,6 +1146,8 @@ async def compose_response_endpoint(
             tone_level=request.tone_level,
             include_memories=request.include_memories,
             style_profile=style_profile,
+            custom_instructions=request.custom_instructions,
+            include_explanation=request.include_explanation,
         )
 
         if result.get("error"):
@@ -1165,6 +1167,8 @@ async def compose_response_endpoint(
             incoming_message=request.incoming_message,
             context_type=request.context_type,
             created_at=datetime.now().isoformat(),
+            custom_instructions=request.custom_instructions,
+            explanation=result.get("explanation"),
         )
 
         log_success("/api/compose-response", context=request.context_type, tone=request.tone_level)

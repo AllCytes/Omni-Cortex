@@ -309,6 +309,8 @@ export interface ComposeRequest {
   template?: ResponseTemplate
   tone_level: number
   include_memories: boolean
+  custom_instructions?: string
+  include_explanation?: boolean
 }
 
 export interface ComposedResponse {
@@ -321,6 +323,8 @@ export interface ComposedResponse {
   incoming_message: string
   context_type: ContextType
   created_at: string
+  custom_instructions?: string
+  explanation?: string
 }
 
 export interface ChatSource {

@@ -6,7 +6,7 @@ import type { ContextType, ResponseTemplate, ComposedResponse } from '@/types'
 import {
   MessageSquare, Mail, Users, AtSign, FileText,
   Wand2, Copy, Check, History, Sparkles,
-  SlidersHorizontal, RefreshCw
+  SlidersHorizontal, RefreshCw, Eraser, HelpCircle
 } from 'lucide-vue-next'
 
 const store = useDashboardStore()
@@ -17,9 +17,12 @@ const contextType = ref<ContextType>('general')
 const selectedTemplate = ref<ResponseTemplate | null>(null)
 const toneLevel = ref(50) // 0-100 slider
 const includeMemories = ref(true)
+const customInstructions = ref('')
+const includeExplanation = ref(false)
 
 // Output state
 const generatedResponse = ref('')
+const explanation = ref('')
 const isGenerating = ref(false)
 const responseHistory = ref<ComposedResponse[]>([])
 const copiedRecently = ref(false)
@@ -62,9 +65,12 @@ async function generate() {
       template: selectedTemplate.value || undefined,
       tone_level: toneLevel.value,
       include_memories: includeMemories.value,
+      custom_instructions: customInstructions.value || undefined,
+      include_explanation: includeExplanation.value,
     })
 
     generatedResponse.value = result.response
+    explanation.value = result.explanation || ''
     responseHistory.value.unshift(result)
 
     // Keep only last 10 items in history
@@ -97,6 +103,21 @@ function useHistoryItem(item: ComposedResponse) {
   if (item.template_used) {
     selectedTemplate.value = item.template_used
   }
+  customInstructions.value = item.custom_instructions || ''
+  explanation.value = item.explanation || ''
+}
+
+function clearAll() {
+  incomingMessage.value = ''
+  customInstructions.value = ''
+  contextType.value = 'general'
+  selectedTemplate.value = null
+  toneLevel.value = 50
+  includeMemories.value = true
+  includeExplanation.value = false
+  generatedResponse.value = ''
+  explanation.value = ''
+  errorMessage.value = ''
 }
 </script>
 
@@ -149,6 +170,22 @@ function useHistoryItem(item: ComposedResponse) {
             />
           </div>
 
+          <!-- Custom Instructions -->
+          <div>
+            <label class="block text-sm font-medium mb-2">
+              Your Instructions (Optional)
+            </label>
+            <textarea
+              v-model="customInstructions"
+              placeholder="Add specific requirements, questions to ask, or things to include in the response..."
+              rows="3"
+              class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 resize-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              E.g., "Ask them about their timeline" or "Include a resource link"
+            </p>
+          </div>
+
           <!-- Quick Templates -->
           <div>
             <label class="block text-sm font-medium mb-2">Response Template (Optional)</label>
@@ -171,23 +208,37 @@ function useHistoryItem(item: ComposedResponse) {
           </div>
 
           <!-- Options -->
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-4 flex-wrap">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" v-model="includeMemories" class="rounded" />
               <span class="text-sm">Include knowledge from memories</span>
             </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" v-model="includeExplanation" class="rounded" />
+              <span class="text-sm">Explain message to me first</span>
+            </label>
           </div>
 
-          <!-- Generate Button -->
-          <button
-            @click="generate"
-            :disabled="!incomingMessage.trim() || isGenerating"
-            class="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
-          >
-            <Sparkles v-if="!isGenerating" class="w-5 h-5" />
-            <RefreshCw v-else class="w-5 h-5 animate-spin" />
-            {{ isGenerating ? 'Generating...' : 'Generate Response' }}
-          </button>
+          <!-- Action Buttons -->
+          <div class="flex gap-2">
+            <button
+              @click="generate"
+              :disabled="!incomingMessage.trim() || isGenerating"
+              class="flex-1 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+            >
+              <Sparkles v-if="!isGenerating" class="w-5 h-5" />
+              <RefreshCw v-else class="w-5 h-5 animate-spin" />
+              {{ isGenerating ? 'Generating...' : 'Generate Response' }}
+            </button>
+            <button
+              @click="clearAll"
+              class="px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2 transition-colors"
+              title="Clear all fields"
+            >
+              <Eraser class="w-4 h-4" />
+              <span class="text-sm font-medium">Clear</span>
+            </button>
+          </div>
 
           <!-- Error Message -->
           <div v-if="errorMessage" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
@@ -218,6 +269,17 @@ function useHistoryItem(item: ComposedResponse) {
             <div class="flex justify-between text-xs text-gray-400 mt-1">
               <span>Casual</span>
               <span>Professional</span>
+            </div>
+          </div>
+
+          <!-- Explanation Section -->
+          <div v-if="explanation" class="mb-4">
+            <label class="block text-sm font-medium mb-2 flex items-center gap-2">
+              <HelpCircle class="w-4 h-4 text-blue-500" />
+              What This Message Means
+            </label>
+            <div class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
+              {{ explanation }}
             </div>
           </div>
 
